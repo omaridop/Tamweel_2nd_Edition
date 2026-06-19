@@ -25,10 +25,11 @@ This project abandons the "Black-Box" AI approach. Instead, it uses a Two-Tier s
 ## 🚀 Setup & Installation
 
 ### 1. Database (Supabase)
-Run the SQL scripts provided in your Supabase SQL Editor:
-- `vector_rag_schema.sql`: Enables `pgvector` and the similarity matching function.
-- `transaction_module.sql`: Sets up the transaction tables, the Financial Health RPC, and mock user data.
-- `seed_20_with_auth.sql`: Populates the database with 20 varied gig-economy users.
+Run the SQL scripts provided in your Supabase SQL Editor in the following order:
+1. `supabase_schema.sql`: Creates the core credit results table (`tamweel_results`).
+2. `seed_20_with_auth.sql`: Populates the database with 20 varied gig-economy users.
+3. `transaction_module.sql`: Sets up transaction tables, the financial health RPC calculation, and populates mock transactions.
+4. `vector_rag_schema.sql`: Enables `pgvector` and the similarity matching functions for policy RAG.
 
 ### 2. Backend (FastAPI)
 ```bash
