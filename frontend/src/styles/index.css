@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0F172A;
+  --color-accent: #10B981;
+  --color-ai: #6366F1;
+  --color-bg-subtle: #F8FAFC;
+  --color-brand-primary: #0F172A;
+  --color-brand-secondary: #10B981;
+  
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui;
+  --font-arabic: "Cairo", sans-serif;
+
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  body {
+    @apply bg-bg-subtle text-primary font-sans antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  [lang="ar"] {
+    @apply font-arabic;
+  }
+}
+
+/* Glassmorphism utility */
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/20;
+}
+
+.shadow-soft {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
