@@ -2,12 +2,19 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from app.schemas import ChatRequest, ChatResponse, ImprovementPlanRequest
 from app.main import supabase, get_current_user, openai_client, engine, logger
 
-router = APIRouter()
-
 from app.services.intent_classifier import classify_intent, IntentType
 from app.services.data_fetcher import fetch_context_for_intent
 from app.services.context_assembler import assemble_messages
 from app.services.intelligence_cache import invalidate_intelligence, get_or_compute_intelligence
+from app.pipeline.embed import embed_query
+from app.services.redis_cache import (
+    is_cacheable_query,
+    generate_cache_key,
+    get_cached_response,
+    set_cached_response
+)
+
+router = APIRouter()
 
 @router.post("/api/v1/chat", response_model=ChatResponse)
 async def chat_with_ai(request: ChatRequest, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
