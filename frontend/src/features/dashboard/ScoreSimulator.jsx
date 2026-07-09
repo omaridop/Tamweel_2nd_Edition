@@ -1,114 +1,226 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/ui/Button';
-import { Brain, Calculator, TrendingUp, AlertCircle, Info } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, Info, Sliders, Sparkles } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
+import useAuthStore from '../../store/useAuthStore';
 
 const ScoreSimulator = () => {
-  const baseScore = 742;
-  const [simulatedScore, setSimulatedScore] = useState(baseScore);
-  const [actions, setActions] = useState({
-    payBillsOnTime: false,
-    increaseSpending: false,
-    newLoan: false,
-    payOffDebt: false,
+  const { detailedAssessment } = useAuthStore();
+  
+  // Use real score if available, otherwise fallback
+  const baseScore = detailedAssessment?.credit_score || 640;
+  
+  const [sliders, setSliders] = useState({
+    payDownDebt: 0, // 0 to 1000 JOD
+    increaseCreditLimit: 0, // 0 to 5000 JOD
+    newInquiries: 0, // 0 to 5 inquiries
   });
 
-  useEffect(() => {
-    let change = 0;
-    if (actions.payBillsOnTime) change += 25;
-    if (actions.increaseSpending) change -= 40;
-    if (actions.newLoan) change -= 15;
-    if (actions.payOffDebt) change += 35;
-    
-    setSimulatedScore(baseScore + change);
-  }, [actions]);
+  const [activePlan, setActivePlan] = useState(null);
 
-  const toggleAction = (key) => {
-    setActions(prev => ({ ...prev, [key]: !prev[key] }));
+  // Recalculate score based on slider values directly during render
+  let change = 0;
+  
+  // Paying down debt increases score (up to +45 points)
+  if (sliders.payDownDebt > 0) {
+    change += Math.floor((sliders.payDownDebt / 1000) * 45);
+  }
+  
+  // Increasing limit lowers utilization, increasing score slightly (+15 points max)
+  if (sliders.increaseCreditLimit > 0) {
+    change += Math.floor((sliders.increaseCreditLimit / 5000) * 15);
+  }
+
+  // New inquiries lower score (-5 points each)
+  if (sliders.newInquiries > 0) {
+    change -= (sliders.newInquiries * 5);
+  }
+  
+  const simulatedScore = baseScore + change;
+
+  const handleSliderChange = (e, key) => {
+    setActivePlan(null); // Reset smart plan if user manually adjusts
+    setSliders(prev => ({ ...prev, [key]: Number(e.target.value) }));
   };
+
+  const applySmartPlan = () => {
+    setSliders({
+      payDownDebt: 500,
+      increaseCreditLimit: 1000,
+      newInquiries: 0
+    });
+    setActivePlan("Optimal Debt-to-Limit Ratio Plan");
+  };
+
+  const scoreDiff = simulatedScore - baseScore;
 
   return (
     <MainLayout>
-      <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-ai/10 rounded-lg">
-            <Brain className="w-6 h-6 text-ai" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-primary">AI Score Simulator</h1>
-            <p className="text-slate-500 text-sm">Predict how your financial decisions impact your creditworthiness.</p>
+      <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <Sliders className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-primary">Interactive Score Simulator</h1>
+              <p className="text-slate-500 text-sm mt-1">Adjust the sliders to see how financial actions will impact your Tamweel AI score.</p>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Actions Panel */}
-          <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 space-y-6">
-            <h3 className="font-bold text-primary flex items-center">
-              <Calculator className="w-4 h-4 mr-2 text-slate-400" />
-              Select Actions
-            </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Controls */}
+          <div className="lg:col-span-2 space-y-6">
             
-            <div className="space-y-4">
-              {[
-                { key: 'payBillsOnTime', label: 'Pay all bills on time for 3 months', impact: '+25 pts', positive: true },
-                { key: 'payOffDebt', label: 'Pay off 200 JOD of existing debt', impact: '+35 pts', positive: true },
-                { key: 'increaseSpending', label: 'Increase monthly spending by 50%', impact: '-40 pts', positive: false },
-                { key: 'newLoan', label: 'Take out a new micro-loan', impact: '-15 pts', positive: false },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => toggleAction(item.key)}
-                  className={twMerge(
-                    "w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-200",
-                    actions[item.key] 
-                      ? "border-accent bg-emerald-50 shadow-sm" 
-                      : "border-slate-100 bg-slate-50 hover:bg-white hover:border-slate-200"
-                  )}
-                >
-                  <span className={twMerge("font-medium text-sm", actions[item.key] ? "text-primary" : "text-slate-600")}>
-                    {item.label}
-                  </span>
-                  <span className={twMerge(
-                    "text-xs font-bold px-2 py-1 rounded-full",
-                    item.positive ? "text-emerald-600 bg-emerald-100/50" : "text-red-600 bg-red-100/50"
-                  )}>
-                    {item.impact}
-                  </span>
-                </button>
-              ))}
+            {/* Simulation Sliders */}
+            <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100">
+              <h3 className="font-bold text-primary flex items-center mb-8">
+                <Calculator className="w-4 h-4 mr-2 text-slate-400" />
+                "What-If" Analysis
+              </h3>
+              
+              <div className="space-y-8">
+                {/* Slider 1 */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <label className="font-bold text-sm text-primary">Pay Down Debt</label>
+                      <p className="text-xs text-slate-500">How much existing debt will you pay off?</p>
+                    </div>
+                    <span className="font-bold text-accent">{sliders.payDownDebt} JOD</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="1000" step="50"
+                    value={sliders.payDownDebt}
+                    onChange={(e) => handleSliderChange(e, 'payDownDebt')}
+                    className="w-full accent-accent h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                    aria-label="Pay Down Debt Amount"
+                    aria-valuenow={sliders.payDownDebt}
+                  />
+                </div>
+
+                {/* Slider 2 */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <label className="font-bold text-sm text-primary">Request Limit Increase</label>
+                      <p className="text-xs text-slate-500">Lowers your credit utilization ratio.</p>
+                    </div>
+                    <span className="font-bold text-accent">{sliders.increaseCreditLimit} JOD</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="5000" step="100"
+                    value={sliders.increaseCreditLimit}
+                    onChange={(e) => handleSliderChange(e, 'increaseCreditLimit')}
+                    className="w-full accent-accent h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                    aria-label="Request Limit Increase Amount"
+                    aria-valuenow={sliders.increaseCreditLimit}
+                  />
+                </div>
+
+                {/* Slider 3 */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <label className="font-bold text-sm text-primary">New Credit Inquiries</label>
+                      <p className="text-xs text-slate-500">Applying for new loans or cards.</p>
+                    </div>
+                    <span className="font-bold text-red-500">{sliders.newInquiries}</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="5" step="1"
+                    value={sliders.newInquiries}
+                    onChange={(e) => handleSliderChange(e, 'newInquiries')}
+                    className="w-full accent-red-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                    aria-label="New Credit Inquiries"
+                    aria-valuenow={sliders.newInquiries}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Action Plans */}
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-100 relative overflow-hidden">
+              <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="inline-flex items-center px-2 py-1 bg-emerald-200/50 text-emerald-800 rounded text-[10px] font-bold uppercase mb-2">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    AI Recommendation
+                  </div>
+                  <h4 className="font-bold text-emerald-950">Smart Action Plan</h4>
+                  <p className="text-sm text-emerald-800/80 mt-1">Let our AI find the fastest path to boost your score by 25+ points.</p>
+                </div>
+                <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white shadow-emerald-600/20 whitespace-nowrap" onClick={applySmartPlan}>
+                  Apply Optimal Plan
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* Result Panel */}
-          <div className="bg-primary text-white p-8 rounded-3xl shadow-xl flex flex-col items-center justify-center relative overflow-hidden">
-             <div className="relative z-10 text-center space-y-4">
-                <p className="text-slate-300 font-bold uppercase tracking-widest text-xs">Simulated Score</p>
-                <div className="text-7xl font-black text-white">{simulatedScore}</div>
-                <div className="flex items-center justify-center gap-2">
-                   <TrendingUp className={twMerge("w-5 h-5", simulatedScore >= baseScore ? "text-accent" : "text-red-400")} />
-                   <span className={twMerge("font-bold", simulatedScore >= baseScore ? "text-accent" : "text-red-400")}>
-                      {simulatedScore - baseScore >= 0 ? '+' : ''}{simulatedScore - baseScore} points change
+          <div className="bg-primary text-white p-8 rounded-3xl shadow-xl flex flex-col items-center justify-start relative overflow-hidden h-full min-h-[400px]">
+             <div className="relative z-10 w-full flex flex-col items-center h-full">
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-8">Simulated AI Score</p>
+                
+                {/* Dynamic Score Display */}
+                <div className="relative flex items-center justify-center w-48 h-48 mb-8">
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 transform">
+                    <circle 
+                      cx="96" cy="96" r="88" 
+                      className="stroke-white/10" strokeWidth="12" fill="none" 
+                    />
+                    <circle 
+                      cx="96" cy="96" r="88" 
+                      className={twMerge("transition-all duration-1000 ease-out", scoreDiff >= 0 ? "stroke-accent" : "stroke-red-500")}
+                      strokeWidth="12" fill="none" 
+                      strokeDasharray="552.9" 
+                      strokeDashoffset={552.9 - (552.9 * Math.min(simulatedScore, 1000)) / 1000}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="text-center" aria-live="polite" aria-atomic="true">
+                    <div className="text-5xl font-black text-white">{simulatedScore}</div>
+                    <div className="text-xs text-slate-400 font-medium mt-1">out of 1000</div>
+                  </div>
+                </div>
+
+                <div className={twMerge(
+                  "flex items-center justify-center gap-2 px-4 py-2 rounded-full border",
+                  scoreDiff >= 0 ? "bg-emerald-500/10 border-emerald-500/20 text-accent" : "bg-red-500/10 border-red-500/20 text-red-400"
+                )}>
+                   {scoreDiff >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                   <span className="font-bold">
+                      {scoreDiff >= 0 ? '+' : ''}{scoreDiff} points
                    </span>
                 </div>
-                <p className="text-xs text-slate-400 max-w-[200px] mx-auto pt-4 leading-relaxed">
-                  *This is an AI prediction based on historical patterns. Actual results may vary.
-                </p>
+
+                {activePlan && (
+                  <div className="mt-8 text-center animate-in slide-in-from-bottom-2">
+                    <p className="text-xs text-emerald-400 font-bold uppercase">Active Plan</p>
+                    <p className="text-sm font-medium mt-1">{activePlan}</p>
+                  </div>
+                )}
              </div>
              
-             {/* Decorative AI Glow */}
-             <div className="absolute inset-0 bg-gradient-to-br from-ai/20 to-transparent pointer-events-none"></div>
+             {/* Decorative Background */}
+             <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 blur-3xl -mr-20 -mt-20"></div>
           </div>
         </div>
 
         {/* Insight Box */}
-        <div className="glass p-6 rounded-2xl border-indigo-100 flex items-start gap-4">
-           <Info className="text-ai w-6 h-6 mt-1" />
+        <div className="glass p-6 rounded-2xl border-indigo-100 flex items-start gap-4 shadow-sm">
+           <div className="p-2 bg-indigo-50 rounded-lg">
+             <Info className="text-indigo-500 w-5 h-5" />
+           </div>
            <div>
-              <h4 className="font-bold text-primary">AI Analysis of Selection</h4>
+              <h4 className="font-bold text-primary">Why this matters</h4>
               <p className="text-sm text-slate-600 mt-1">
-                Based on your current ZainCash patterns, paying off debt has the highest immediate impact because your 
-                debt-to-income ratio is currently the primary factor limiting your score growth.
+                Your credit score is highly sensitive to your <strong>Credit Utilization Ratio</strong>. By paying down debt while simultaneously increasing your total available credit limit, you can drastically lower your utilization ratio, resulting in the largest possible score boost.
               </p>
            </div>
         </div>

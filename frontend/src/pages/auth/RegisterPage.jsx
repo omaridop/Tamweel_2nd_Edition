@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -33,7 +33,6 @@ const RegisterPage = () => {
       await registerUser(data.name, data.email, data.password);
       navigate('/user/dashboard');
     } catch (err) {
-      console.error(err);
       alert(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const AuthLayout = ({ children, title, description }) => {
   return (
     <div className="flex min-h-screen w-full bg-gray-50">

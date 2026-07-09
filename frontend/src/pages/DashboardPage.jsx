@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import { TrendingUp, Brain, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
+import useAuthStore from '../store/useAuthStore';
+import AdminKnowledgeUpload from '../features/admin/AdminKnowledgeUpload';
+import AIInsightsCard from '../components/dashboard/AIInsightsCard';
 
 const DashboardPage = () => {
-  const stats = [
+  const role = useAuthStore((state) => state.role);
+  const stats = useMemo(() => [
     { name: 'Credit Score', value: '742', change: '+12', icon: TrendingUp, color: 'text-accent' },
     { name: 'AI Confidence', value: '94%', change: 'Stable', icon: Brain, color: 'text-ai' },
     { name: 'Linked Accounts', value: '4', change: '2 Pending', icon: LinkIcon, color: 'text-blue-500' },
     { name: 'Active Disputes', value: '0', change: 'None', icon: AlertCircle, color: 'text-slate-400' },
-  ];
+  ], []);
 
   return (
     <MainLayout>
@@ -64,8 +68,18 @@ const DashboardPage = () => {
            </div>
         </div>
 
+        {/* Admin Section: Knowledge Base Upload */}
+        {role === 'sponsor' && (
+          <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+             <AdminKnowledgeUpload />
+          </div>
+        )}
+
+        {/* Proactive AI Insights (Phase 2) */}
+        {role === 'user' && <AIInsightsCard />}
+
         {/* Placeholder for Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
            <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-100 h-80 flex items-center justify-center text-slate-400 font-medium">
               Credit Score History Chart (Recharts)
            </div>

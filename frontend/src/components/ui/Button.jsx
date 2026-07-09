@@ -1,4 +1,3 @@
-import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
 const Button = ({ 
@@ -24,7 +23,7 @@ const Button = ({
       onClick={onClick}
       disabled={isLoading}
       className={twMerge(
-        "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
+        "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
         variants[variant],
         className
       )}

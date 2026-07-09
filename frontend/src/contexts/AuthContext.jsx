@@ -1,18 +1,17 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+ 
+import { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('tamweel_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [loading] = useState(false);
 
   useEffect(() => {
-    // التحقق من الجلسة (مبدئياً سنفترض عدم وجود مستخدم)
-    const savedUser = localStorage.getItem('tamweel_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // Session check is handled in useState initialization
   }, []);
 
   const login = async (email, password) => {
@@ -55,4 +54,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

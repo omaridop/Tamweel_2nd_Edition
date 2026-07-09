@@ -1,5 +1,4 @@
-import React, { forwardRef } from 'react';
-import { clsx } from 'clsx';
+import { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 const Input = forwardRef(({ label, error, type = 'text', className, ...props }, ref) => {

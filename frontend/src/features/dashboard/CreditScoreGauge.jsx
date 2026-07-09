@@ -1,4 +1,3 @@
-import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { twMerge } from 'tailwind-merge';
 
@@ -32,26 +31,26 @@ const CreditScoreGauge = ({ score }) => {
             cy="80%"
             startAngle={180}
             endAngle={0}
-            innerRadius={80}
-            outerRadius={110}
+            innerRadius={85}
+            outerRadius={115}
             paddingAngle={0}
             dataKey="value"
             stroke="none"
           >
-            <Cell fill={getColor(score)} />
-            <Cell fill="#E2E8F0" />
+            <Cell fill={getColor(score)} className="transition-all duration-1000 ease-out" />
+            <Cell fill="#F1F5F9" />
           </Pie>
         </PieChart>
       </ResponsiveContainer>
       
-      <div className="absolute top-[55%] flex flex-col items-center">
-        <span className="text-5xl font-black text-primary">{score}</span>
-        <span className={twMerge("text-sm font-bold uppercase tracking-widest mt-1")} style={{ color: getColor(score) }}>
+      <div className="absolute top-[52%] flex flex-col items-center">
+        <span className="text-6xl font-black text-slate-900 tracking-tighter">{score}</span>
+        <span className={twMerge("text-xs font-bold uppercase tracking-widest mt-2")} style={{ color: getColor(score) }}>
           {getLabel(score)}
         </span>
       </div>
       
-      <div className="flex justify-between w-full max-w-[220px] text-[10px] font-bold text-slate-400 mt-[-20px]">
+      <div className="flex justify-between w-full max-w-[240px] text-[11px] font-bold text-slate-400 mt-[-15px]">
         <span>300</span>
         <span>850</span>
       </div>

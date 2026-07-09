@@ -1,4 +1,60 @@
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+const getAuthHeaders = () => {
+  try {
+    const storageStr = localStorage.getItem('tamweel-auth-storage');
+    if (storageStr) {
+      const state = JSON.parse(storageStr).state;
+      if (state && state.token) {
+        return { 'Authorization': `Bearer ${state.token}` };
+      }
+    }
+  } catch {
+    console.error('Failed to parse auth token');
+  }
+  return {};
+};
+
+export const fetchWithAuth = async (endpoint, options = {}) => {
+  const headers = new Headers(options.headers || {});
+  
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
+  
+  const authHeaders = getAuthHeaders();
+  if (authHeaders.Authorization) {
+    headers.set('Authorization', authHeaders.Authorization);
+  } else {
+    const token = sessionStorage.getItem('tamweel_token');
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  const config = {
+    ...options,
+    headers,
+  };
+
+  const response = await fetch(`${BASE_URL}/api/v1${endpoint}`, config);
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      console.warn("Unauthorized request, clearing session...");
+      sessionStorage.removeItem('tamweel_token');
+      localStorage.removeItem('tamweel-auth-storage');
+      window.dispatchEvent(new Event('auth-expired'));
+    }
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.message || `API Error: ${response.status}`);
+  }
+  
+  return response.json();
+};
+
+
+
 
 export const scoringService = {
   /**
@@ -10,6 +66,7 @@ export const scoringService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(financialData),
       });
@@ -19,9 +76,9 @@ export const scoringService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error('Scoring Service Error:', error);
-      throw error;
+    } catch (e) {
+      console.error('Scoring Service Error:', e);
+      throw e;
     }
   },
 
@@ -30,14 +87,16 @@ export const scoringService = {
    */
   getAllResults: async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/v1/results/all_users`);
+      const response = await fetch(`${BASE_URL}/api/v1/results/all_users`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch portfolio data');
       }
       return await response.json();
-    } catch (error) {
-      console.error('All Results Fetch Error:', error);
-      throw error;
+    } catch (e) {
+      console.error('All Results Fetch Error:', e);
+      throw e;
     }
   },
 
@@ -46,16 +105,18 @@ export const scoringService = {
    */
   getUserResults: async (userId) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/v1/results/${userId}`);
+      const response = await fetch(`${BASE_URL}/api/v1/results/${userId}`, {
+        headers: getAuthHeaders(),
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch user history');
       }
 
       return await response.json();
-    } catch (error) {
-      console.error('History Fetch Error:', error);
-      throw error;
+    } catch (e) {
+      console.error('History Fetch Error:', e);
+      throw e;
     }
   },
 
@@ -66,7 +127,7 @@ export const scoringService = {
     try {
       const response = await fetch(`${BASE_URL}/health`);
       return response.ok;
-    } catch (error) {
+    } catch {
       return false;
     }
   },
@@ -74,21 +135,13 @@ export const scoringService = {
   /**
    * Chat with AI about credit score
    */
-  chat: async (userId, message, role = 'user') => {
+  chat: async (userId, message, role = 'user', history = [], signal) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/v1/chat`, {
+      return await fetchWithAuth('/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId, message, role }),
+        body: JSON.stringify({ user_id: userId, message, role, history }),
+        signal,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to chat with AI');
-      }
-
-      return await response.json();
     } catch (error) {
       console.error('Chat Service Error:', error);
       throw error;
@@ -154,6 +207,7 @@ export const scoringService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({ user_id: userId, email }),
       });
@@ -165,6 +219,32 @@ export const scoringService = {
       return await response.json();
     } catch (error) {
       console.error('Improvement Plan Service Error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Upload a policy PDF file
+   */
+  uploadPolicy: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${BASE_URL}/api/v1/admin/upload-policy`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to upload policy');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Upload Policy Error:', error);
       throw error;
     }
   }

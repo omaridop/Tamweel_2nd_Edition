@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -14,8 +14,6 @@ import {
 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import useAuthStore from '../store/useAuthStore';
-import ChatBot from '../components/ui/ChatBot';
-
 const MainLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -29,16 +27,20 @@ const MainLayout = ({ children }) => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/user/dashboard', icon: LayoutDashboard, role: 'user' },
-    { name: 'AI Simulator', href: '/user/simulator', icon: BrainCircuit, role: 'user' },
-    { name: 'Connections', href: '/user/connections', icon: Link2, role: 'user' },
-    { name: 'Disputes', href: '/user/disputes', icon: MessageSquareWarning, role: 'user' },
-    { name: 'Sponsor Portal', href: '/sponsor/dashboard', icon: UserCircle, role: 'sponsor' },
+    // User Routes
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, role: 'user' },
+    { name: 'AI Simulator', href: '/dashboard/simulator', icon: BrainCircuit, role: 'user' },
+    { name: 'Connections', href: '/dashboard/connections', icon: Link2, role: 'user' },
+    { name: 'Disputes', href: '/dashboard/disputes', icon: MessageSquareWarning, role: 'user' },
+    // Admin Routes
+    { name: 'Command Center', href: '/admin', icon: LayoutDashboard, role: 'admin' },
+    { name: 'KYC Queue', href: '/admin/kyc', icon: UserCircle, role: 'admin' },
+    { name: 'Risk Management', href: '/admin/risk', icon: MessageSquareWarning, role: 'admin' },
   ];
 
   const currentRole = useAuthStore.getState().role || 'user'; // Fallback to user
   const filteredNavigation = navigation.filter(item => 
-    item.role === currentRole || (currentRole === 'sponsor' && item.role === 'user') // Sponsor sees everything, user sees only user stuff
+    item.role === currentRole || (currentRole === 'sponsor' && item.role === 'admin') 
   );
 
   return (
@@ -102,13 +104,15 @@ const MainLayout = ({ children }) => {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-all"
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            aria-expanded={isSidebarOpen}
+            aria-label="Toggle Sidebar"
           >
             {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
           <div className="flex items-center space-x-4 relative">
-            <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative">
+            <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Notifications">
                <Bell className="w-5 h-5" />
                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
@@ -117,7 +121,9 @@ const MainLayout = ({ children }) => {
             <div className="relative">
               <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="h-10 w-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden hover:ring-2 hover:ring-accent transition-all"
+                className="h-10 w-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden hover:ring-2 hover:ring-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-all"
+                aria-expanded={isProfileOpen}
+                aria-label="User Profile Menu"
               >
                   <img src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=0F172A&color=fff`} alt="User" />
               </button>
@@ -168,8 +174,6 @@ const MainLayout = ({ children }) => {
            {children}
         </main>
       </div>
-
-      <ChatBot />
     </div>
   );
 };

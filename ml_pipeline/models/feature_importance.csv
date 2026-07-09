@@ -1,0 +1,13 @@
+Feature,Importance
+late_bills_count,0.38205004
+bill_reliability_pct,0.24758574
+income_stability_score,0.07686419
+existing_loans,0.045758013
+income_source_count,0.041563705
+current_balance_jod,0.035368826
+total_bills_checked,0.030782763
+wallet_tx_count,0.029348195
+wallet_total_volume_jod,0.028832575
+balance_to_income_ratio,0.028120996
+avg_monthly_income_jod,0.027870085
+profession_category,0.02585489

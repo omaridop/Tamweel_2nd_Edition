@@ -9,6 +9,7 @@ const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       role: null, // 'user' or 'sponsor'
+      token: null,
       currentDetailedAssessment: null,
 
       setDetailedAssessment: (assessment) => {
@@ -18,7 +19,7 @@ const useAuthStore = create(
       register: async (name, email, password) => {
         set({ isLoading: true });
         try {
-          const result = await scoringService.register({ name, email, password });
+          await scoringService.register({ name, email, password });
           const user = { id: Date.now().toString(), name, email };
           set({ user, isAuthenticated: true, role: 'user', isLoading: false });
           return user;
@@ -32,8 +33,8 @@ const useAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await scoringService.login({ email, password });
-          const { user, role } = response;
-          set({ user, isAuthenticated: true, role, isLoading: false });
+          const { user, role, access_token } = response;
+          set({ user, isAuthenticated: true, role, token: access_token, isLoading: false });
           return user;
         } catch (error) {
           set({ isLoading: false });
@@ -42,7 +43,7 @@ const useAuthStore = create(
       },
 
       logout: () => {
-        set({ user: null, isAuthenticated: false, role: null });
+        set({ user: null, isAuthenticated: false, role: null, token: null });
       },
     }),
     {

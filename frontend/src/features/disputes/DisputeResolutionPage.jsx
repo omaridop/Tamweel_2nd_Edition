@@ -1,4 +1,3 @@
-import React from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';

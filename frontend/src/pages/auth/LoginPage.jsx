@@ -1,22 +1,21 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { BrainCircuit, ShieldCheck } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid business email'),
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -25,19 +24,17 @@ const LoginPage = () => {
 
   const onSubmit = async (data) => {
     setIsLoading(true);
-    setError('');
     try {
       await login(data.email, data.password);
       // Get the role from the store after login
       const role = useAuthStore.getState().role;
       
-      if (role === 'sponsor') {
-        navigate('/sponsor/dashboard');
+      if (role === 'admin' || role === 'sponsor') {
+        navigate('/admin');
       } else {
-        navigate('/user/dashboard');
+        navigate('/dashboard');
       }
-    } catch (err) {
-      setError('Invalid email or password. Please use the provided credentials.');
+    } catch { // setError('Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -45,28 +42,27 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen w-full flex bg-slate-50">
-      {/* Right Side: Form */}
+      {/* Left Side: Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-16">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-            <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-100">
-               <ShieldCheck className="text-white w-7 h-7" />
+            {/* TAMWEEL Logo Placeholder */}
+            <div className="flex items-center mb-8">
+              <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center mr-4 shadow-lg shadow-emerald-100">
+                <span className="font-bold text-white text-2xl">T</span>
+              </div>
+              <span className="font-extrabold text-3xl tracking-tight text-primary">Tamweel</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-primary tracking-tight">Institutional Access</h1>
-            <p className="text-slate-500 font-medium mt-2">Securely manage your AI-driven credit assessment.</p>
+            <h1 className="text-3xl font-extrabold text-primary tracking-tight">Welcome back</h1>
+            <p className="text-slate-500 font-medium mt-2">Log in to your account to securely manage your financial data.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-6">
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-1">
-                {error}
-              </div>
-            )}
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
             
             <Input
-              label="Business Email"
+              label="Email Address"
               type="email"
-              placeholder="anas@tamweel.ai"
+              placeholder="name@example.com"
               error={errors.email?.message}
               {...register('email')}
             />
@@ -87,7 +83,7 @@ const LoginPage = () => {
             </div>
 
             <Button type="submit" className="w-full h-12" isLoading={isLoading} variant="primary">
-              Sign In to Dashboard
+              {isLoading ? 'Authenticating...' : 'Sign In'}
             </Button>
 
             <div className="relative py-4">
@@ -95,13 +91,13 @@ const LoginPage = () => {
               <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-50 px-2 text-slate-400 font-bold">Or continue with</span></div>
             </div>
 
-            <Button variant="outline" className="w-full h-12">
+            <Button variant="outline" className="w-full h-12" type="button">
                <img src="https://www.svgrepo.com/show/355037/google.svg" className="w-5 h-5 mr-2" alt="Google" />
-               Google Workspace
+               Google
             </Button>
           </form>
 
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-slate-500 pt-4">
             New to Tamweel?{' '}
             <Link to="/register" className="text-accent font-bold hover:underline">
               Apply for an account
@@ -110,7 +106,7 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Left Side: Branding/Trust */}
+      {/* Right Side: Branding/Trust */}
       <div className="hidden lg:flex w-1/2 bg-primary relative overflow-hidden flex-col justify-center p-20 text-white">
           <div className="absolute top-0 left-0 w-full h-full opacity-10">
               <div className="absolute -top-24 -left-24 w-96 h-96 bg-accent rounded-full blur-3xl"></div>

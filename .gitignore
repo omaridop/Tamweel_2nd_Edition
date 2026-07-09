@@ -23,7 +23,20 @@ Thumbs.db
 *.swp
 *.swo
 
+# Testing
+.pytest_cache/
+.coverage
+
+# Redis
+dump.rdb
+*.rdb
+
 # Project Specific
 backend/consumer_empowerment_and_market_conduct_wg_action_plan-0.pdf
 data/*.csv
-Tamweel_MVP/data/*.csv
+ml_pipeline/data/*.csv
+
+# Logs & Temp
+logs/
+tmp/
+*.log
