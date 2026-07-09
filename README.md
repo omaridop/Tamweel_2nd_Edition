@@ -87,6 +87,8 @@ The result: an entire generation of productive, financially responsible workers 
 
 ## ✅ The Solution
 
+![User Journey](docs/images/tamweel_user_journey.png)
+
 Tamweel is a **full-stack AI financial platform** that:
 
 1. **Evaluates alternative financial signals** — income stability, bill reliability, wallet transaction volume, balance-to-income ratio, and profession context.
@@ -110,6 +112,12 @@ Tamweel is a **full-stack AI financial platform** that:
 - 📈 **Sponsor Portfolio Dashboard** — aggregate view of all applicants with risk distribution analytics
 - ⚡ **Redis Smart Cache** — reduces LLM calls for cacheable generic queries with 24-hour TTL
 - 🔄 **Query Rewriter** — resolves ambiguous follow-up questions before RAG retrieval
+
+---
+
+## 🤖 Hybrid AI Pipeline
+
+![Hybrid AI Pipeline](docs/images/tamweel_ai_pipeline.png)
 
 ---
 
@@ -276,6 +284,22 @@ sequenceDiagram
     ML-->>F: final_result
     F-->>U: ScoringResult (score, decision, explanation, breakdown)
 ```
+
+---
+
+## 📸 System Demonstration
+
+### 1. Personal Credit Score Explanation
+![AI-generated personalized financial analysis using verified user profile data.](docs/images/demo/screenshot1.png)
+*AI-generated personalized financial analysis using verified user profile data.*
+
+### 2. Credit Improvement Recommendations
+![Actionable recommendations generated from spending behavior analysis.](docs/images/demo/screenshot2.png)
+*Actionable recommendations generated from spending behavior analysis.*
+
+### 3. AI Security Protection
+![Prompt injection attempt blocked by financial safety controls.](docs/images/demo/screenshot3.png)
+*Prompt injection attempt blocked by financial safety controls.*
 
 ---
 
@@ -538,6 +562,8 @@ Sponsors can upload PDF policy documents via the admin panel. The ingestion pipe
 ---
 
 ## 🔐 Security & Responsible AI
+
+![Responsible AI & Security Flow](docs/images/tamweel_responsible_ai.png)
 
 ### Authentication & Authorization
 
