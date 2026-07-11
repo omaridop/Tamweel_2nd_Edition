@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchWithAuth } from '../../services/api';
 import useAuthStore from '../../store/useAuthStore';
 import { AlertCircle, CheckCircle, Lightbulb, Search, Loader2 } from 'lucide-react';
@@ -32,7 +32,7 @@ const AIInsightsCard = () => {
     fetchInsights();
   }, [user]);
 
-  const handleOpenChat = React.useCallback(() => {
+  const handleOpenChat = useCallback(() => {
     window.dispatchEvent(new CustomEvent('open-chat'));
     window.dispatchEvent(new CustomEvent('send-chat-message', {
       detail: { message: 'Give me a full financial health review' }

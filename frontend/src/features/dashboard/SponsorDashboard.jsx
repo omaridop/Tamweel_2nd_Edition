@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -74,7 +74,7 @@ const SponsorDashboard = () => {
         const responseData = await scoringService.getAllResults();
         setData(responseData);
         calculateStats(responseData);
-      } catch (error) {
+      } catch {
         // Do nothing on error
       } finally {
         setLoading(false);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { TrendingUp, AlertCircle } from 'lucide-react';
 
@@ -19,7 +19,7 @@ const SpendingAnalytics = ({ userEmail }) => {
       try {
         const result = await fetchWithAuth(`/analytics/spending-patterns/${userEmail}`);
         setData(result);
-      } catch (error) {
+      } catch {
         // Do nothing on error
       } finally {
         setLoading(false);
@@ -27,6 +27,36 @@ const SpendingAnalytics = ({ userEmail }) => {
     };
     fetchData();
   }, [userEmail]);
+
+  // Process data for Donut Chart (Expenses by Category)
+  const donutData = useMemo(() => {
+    if (!data || !data.transactions) return [];
+    const expenses = data.transactions.filter(t => t.type === 'expense');
+    const categoryMap = expenses.reduce((acc, curr) => {
+      acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
+      return acc;
+    }, {});
+    
+    return Object.keys(categoryMap).map(key => ({
+      name: key.replace('_', ' ').toUpperCase(),
+      value: categoryMap[key]
+    })).sort((a, b) => b.value - a.value);
+  }, [data]);
+
+  // Process data for Trend Line (Income vs Expense over time)
+  // Group by Month
+  const trendData = useMemo(() => {
+    if (!data || !data.transactions) return [];
+    const monthlyMap = data.transactions.reduce((acc, curr) => {
+      const date = new Date(curr.created_at);
+      const month = date.toLocaleString('default', { month: 'short' });
+      if (!acc[month]) acc[month] = { month, income: 0, expense: 0 };
+      acc[month][curr.type] += Number(curr.amount);
+      return acc;
+    }, {});
+
+    return Object.values(monthlyMap);
+  }, [data]);
 
   if (loading) {
     return (
@@ -46,34 +76,6 @@ const SpendingAnalytics = ({ userEmail }) => {
       </div>
     );
   }
-
-  // Process data for Donut Chart (Expenses by Category)
-  const donutData = React.useMemo(() => {
-    const expenses = data.transactions.filter(t => t.type === 'expense');
-    const categoryMap = expenses.reduce((acc, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
-      return acc;
-    }, {});
-    
-    return Object.keys(categoryMap).map(key => ({
-      name: key.replace('_', ' ').toUpperCase(),
-      value: categoryMap[key]
-    })).sort((a, b) => b.value - a.value);
-  }, [data.transactions]);
-
-  // Process data for Trend Line (Income vs Expense over time)
-  // Group by Month
-  const trendData = React.useMemo(() => {
-    const monthlyMap = data.transactions.reduce((acc, curr) => {
-      const date = new Date(curr.created_at);
-      const month = date.toLocaleString('default', { month: 'short' });
-      if (!acc[month]) acc[month] = { month, income: 0, expense: 0 };
-      acc[month][curr.type] += Number(curr.amount);
-      return acc;
-    }, {});
-
-    return Object.values(monthlyMap);
-  }, [data.transactions]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

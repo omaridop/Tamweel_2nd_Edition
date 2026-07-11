@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import { TwinPanelLayout } from '../../components/TwinPanelLayout';
 
@@ -33,7 +33,7 @@ const UserDashboard = () => {
     } finally {
       setIsGeneratingPlan(false);
     }
-  }, [user?.name, user?.email]);
+  }, [user]);
 
   const effectRan = useRef(false);
 
@@ -92,7 +92,7 @@ const UserDashboard = () => {
     return () => {
       effectRan.current = true;
     };
-  }, [user?.name, currentDetailedAssessment]);
+  }, [user, currentDetailedAssessment]);
 
   // Use assessment data if available, otherwise fallback to defaults
   const currentScore = Math.round(assessment?.credit_score || assessment?.final_score || 0);
