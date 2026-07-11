@@ -4,6 +4,13 @@ import logging
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional
+import html
+
+def sanitize_input(text: Any) -> str:
+    if text is None:
+        return ""
+    text_str = str(text)
+    return html.escape(text_str).replace("{", "&#123;").replace("}", "&#125;")
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -141,10 +148,10 @@ def generate_explanation(user_data: Dict[str, Any], ml_score: float, financial_m
     if financial_metrics:
         financial_str = f"""
 TRANSACTION INSIGHTS (for narrative context only):
-- Savings Rate: {financial_metrics.get('savings_rate', 0)}
-- Spending Volatility: {financial_metrics.get('volatility', 0)}
-- Bill Reliability: {financial_metrics.get('reliability', 0)}
-- Top Expense Category: {financial_metrics.get('top_category', 'None')}
+- Savings Rate: {sanitize_input(financial_metrics.get('savings_rate', 0))}
+- Spending Volatility: {sanitize_input(financial_metrics.get('volatility', 0))}
+- Bill Reliability: {sanitize_input(financial_metrics.get('reliability', 0))}
+- Top Expense Category: {sanitize_input(financial_metrics.get('top_category', 'None'))}
 """
 
     # Derive decision label from ml_score for grounding the explanation
@@ -161,14 +168,14 @@ TRANSACTION INSIGHTS (for narrative context only):
 
     user_prompt = f"""
 USER FINANCIAL DATA:
-- Profession Category: {user_data.get('profession_category')}
-- Avg Monthly Income: {user_data.get('avg_monthly_income_jod')} JOD
-- Income Stability: {user_data.get('income_stability_score')}
-- Late Bills: {user_data.get('late_bills_count')}
-- Bill Reliability: {user_data.get('bill_reliability_pct')}%
-- Current Balance: {user_data.get('current_balance_jod')} JOD
-- Balance/Income Ratio: {user_data.get('balance_to_income_ratio')}
-- Wallet Volume: {user_data.get('wallet_total_volume_jod')} JOD
+- Profession Category: {sanitize_input(user_data.get('profession_category'))}
+- Avg Monthly Income: {sanitize_input(user_data.get('avg_monthly_income_jod'))} JOD
+- Income Stability: {sanitize_input(user_data.get('income_stability_score'))}
+- Late Bills: {sanitize_input(user_data.get('late_bills_count'))}
+- Bill Reliability: {sanitize_input(user_data.get('bill_reliability_pct'))}%
+- Current Balance: {sanitize_input(user_data.get('current_balance_jod'))} JOD
+- Balance/Income Ratio: {sanitize_input(user_data.get('balance_to_income_ratio'))}
+- Wallet Volume: {sanitize_input(user_data.get('wallet_total_volume_jod'))} JOD
 {financial_str}
 
 FINAL CREDIT SCORE (ML model output, fixed): {ml_score:.1f}/100

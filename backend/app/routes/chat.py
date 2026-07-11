@@ -14,6 +14,14 @@ from app.services.redis_cache import (
     set_cached_response
 )
 
+import time
+import json
+import openai
+import httpx
+from fastapi.responses import JSONResponse
+from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
+from app.pipeline.query_rewriter import rewrite_query
+
 router = APIRouter()
 
 @router.post("/api/v1/chat", response_model=ChatResponse)
@@ -24,11 +32,9 @@ async def chat_with_ai(request: ChatRequest, background_tasks: BackgroundTasks, 
     try:
         # Extract JWT identity
         user_email = current_user.get("email", current_user.get("sub", request.user_id))
-        role = current_user.get("role", request.role)
+        role = current_user.get("role") or "user"
 
         context_data_dict = {}
-        
-        from app.pipeline.query_rewriter import rewrite_query
         
         # Rewrite query if there is history
         search_query = request.message
@@ -138,7 +144,6 @@ async def chat_with_ai(request: ChatRequest, background_tasks: BackgroundTasks, 
             except Exception as e:
                 logger.error(f"RAG Retrieval Error: {e}", exc_info=True)
         
-        import time
         start_time = time.time()
         
         # --- REDIS SMART CACHE LOOKUP ---
@@ -206,10 +211,6 @@ JSON SCHEMA:
 """
         
         # 5. Call LLM via DeepSeek with OpenRouter Fallback
-        import openai
-        import httpx
-        from fastapi.responses import JSONResponse
-        from tenacity import retry, retry_if_exception_type, wait_exponential, stop_after_attempt
         
         @retry(
             retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
@@ -273,7 +274,6 @@ JSON SCHEMA:
             
             if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
                 json_str = response_text[start_idx:end_idx+1]
-                import json
                 parsed = json.loads(json_str)
             else:
                 raise ValueError("No valid JSON object boundaries found in response.")

@@ -88,11 +88,6 @@ async def login_user(request: LoginRequest):
         # To grant a user sponsor access: UPDATE tamweel_results SET role='sponsor' WHERE email='...';
         db_role = user_record.get("role")
         
-        # Temporary Fallback for MVP testing because the SQL migration wasn't run
-        if db_role is None and request.email == "admin@tamweel.ai":
-            db_role = "sponsor"
-            logger.info("Used fallback role assignment for admin@tamweel.ai because 'role' column is missing.")
-            
         if db_role not in ("user", "sponsor", "admin"):
             # Column missing or unexpected value — safe default is lowest privilege
             logger.warning(

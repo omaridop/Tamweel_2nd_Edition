@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from app.schemas import UserFinancialData, ScoringResult
 from app.main import supabase, get_current_user, engine, logger
 
@@ -27,7 +28,7 @@ async def get_credit_score(data: UserFinancialData, current_user: dict = Depends
         # that the audit log is written under the correct identity.
         user_data_dict["_authenticated_email"] = target_email
 
-        result = engine.run_pipeline(user_data_dict, financial_metrics=financial_metrics)
+        result = await run_in_threadpool(engine.run_pipeline, user_data_dict, financial_metrics)
 
         
         # Ensure score_breakdown contains floats
@@ -59,8 +60,5 @@ async def get_credit_score(data: UserFinancialData, current_user: dict = Depends
             
         return result
     except Exception as e:
-        import traceback
-        with open('error.log', 'w', encoding='utf-8') as f:
-            f.write(traceback.format_exc())
-        logger.error("Scoring Error: check error.log", exc_info=True)
+        logger.error("Scoring Error", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
