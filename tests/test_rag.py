@@ -1,26 +1,31 @@
 import sys
 import os
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
 
 os.environ["JWT_SECRET_KEY"] = "mock"
 
-from app.main import app
+from app.main import app, JWT_SECRET
 from fastapi.testclient import TestClient
 import jwt
 from datetime import datetime, timedelta, timezone
 
 client = TestClient(app)
 
-@patch("app.main.supabase")
-@patch("app.main.openai_client")
-@patch("app.main.embed_query")
-def test_retrieval_returns_docs_and_citations(mock_embed, mock_openai, mock_supabase):
+@patch("app.routes.chat.set_cached_response", new_callable=AsyncMock)
+@patch("app.routes.chat.get_cached_response", new_callable=AsyncMock)
+@patch("app.routes.chat.supabase")
+@patch("app.routes.chat.openai_client")
+@patch("app.routes.chat.embed_query")
+def test_retrieval_returns_docs_and_citations(mock_embed, mock_openai, mock_supabase, mock_get_cache, mock_set_cache):
     """Assert retrieval returns docs, citations exist in the RAG pipeline."""
     # Setup mock token
-    token = jwt.encode({"sub": "test@test.com", "email": "test@test.com", "role": "user", "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, "mock", algorithm="HS256")
+    token = jwt.encode({"sub": "test@test.com", "email": "test@test.com", "role": "user", "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, JWT_SECRET, algorithm="HS256")
+    
+    # Mock cache
+    mock_get_cache.return_value = None
     
     # Mock embeddings
     mock_embed.return_value = [0.1] * 1536

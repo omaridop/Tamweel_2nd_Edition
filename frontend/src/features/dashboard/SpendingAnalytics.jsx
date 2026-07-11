@@ -4,6 +4,8 @@ import { TrendingUp, AlertCircle } from 'lucide-react';
 
 const COLORS = ['#10B981', '#F87171', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B'];
 
+import { fetchWithAuth } from '../../services/api';
+
 const SpendingAnalytics = ({ userEmail }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,11 +17,8 @@ const SpendingAnalytics = ({ userEmail }) => {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/analytics/spending-patterns/${userEmail}`);
-        if (response.ok) {
-          const result = await response.json();
-          setData(result);
-        }
+        const result = await fetchWithAuth(`/analytics/spending-patterns/${userEmail}`);
+        setData(result);
       } catch (error) {
         // Do nothing on error
       } finally {
