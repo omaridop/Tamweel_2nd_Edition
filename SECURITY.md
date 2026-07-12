@@ -34,7 +34,7 @@ Our philosophy is built on **Zero Trust**, **Data Privacy**, and **Deterministic
 ## 4. LLM Security & RAG Grounding Protection
 
 ### The ML Score Firewall
-- **Deterministic AI**: The LLM (Claude/DeepSeek) is **strictly prohibited** from calculating, altering, or estimating the final credit score. 
+- **Deterministic AI**: The LLM (DeepSeek via OpenRouter) is **strictly prohibited** from calculating, altering, or estimating the final credit score. 
 - The credit score is exclusively computed by the calibrated XGBoost engine. The LLM only receives the mathematical output as a read-only variable to generate an explanation.
 
 ### Prompt Injection Defenses

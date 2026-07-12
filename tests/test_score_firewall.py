@@ -106,10 +106,13 @@ def mock_llm_if_requested():
             "approved_amount_jod": 999999,
             "decision": "Approved"
         }
-        mock_content.text = json.dumps(malicious_json)
-        mock_response.content = [mock_content]
+        mock_message = MagicMock()
+        mock_message.content = json.dumps(malicious_json)
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
 
-        with patch("rag_engine.client.messages.create", return_value=mock_response):
+        with patch("rag_engine.client.chat.completions.create", return_value=mock_response):
             yield
     else:
         yield

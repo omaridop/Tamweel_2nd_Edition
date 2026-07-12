@@ -309,7 +309,7 @@ class TamweelHybridEngine:
                         "explanation_reason": final_result.get('reason'),
                         "explanation_strengths": final_result.get('key_strengths', []),
                         "explanation_risks": final_result.get('key_risks', []),
-                        "explanation_model": "claude-sonnet-4-6",
+                        "explanation_model": "deepseek-v4-via-openrouter",
                         "financial_metrics_snapshot": financial_metrics or {},
                     }
                     try:

@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS credit_decision_audit_log (
     explanation_reason      TEXT,
     explanation_strengths   TEXT[],
     explanation_risks       TEXT[],
-    explanation_model       TEXT DEFAULT 'claude-sonnet-4-6',
+    explanation_model       TEXT DEFAULT 'deepseek-v4-via-openrouter',
 
     -- ── Financial Metrics Snapshot ──────────────────────────────────────────
     financial_metrics_snapshot JSONB

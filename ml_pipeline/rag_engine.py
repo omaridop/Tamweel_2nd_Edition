@@ -1,7 +1,9 @@
 import os
 import json
 import logging
-from anthropic import Anthropic
+import httpx
+from openai import OpenAI
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional
 import html
@@ -17,8 +19,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ─── 1. CONFIGURATION ────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "dummy_key")
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
 
 # ─── 2. RAG KNOWLEDGE BASE ───────────────────────────────────────────────────
 RAG_KNOWLEDGE_BASE = {
@@ -196,17 +199,29 @@ Return ONLY this JSON (no score fields, no numeric adjustments):
 }}
 """
 
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
+    messages = [
+        {"role": "system", "content": EXPLANATION_SYSTEM_PROMPT.format(context=context)},
+        {"role": "user", "content": user_prompt}
+    ]
+
+    @retry(
+        retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
+        wait=wait_exponential(multiplier=1, min=1, max=4),
+        stop=stop_after_attempt(3),
+        reraise=True
+    )
+    def call_llm_with_retry():
+        return client.chat.completions.create(
+            model="deepseek/deepseek-chat",
             max_tokens=600,
-            system=EXPLANATION_SYSTEM_PROMPT.format(context=context),
-            messages=[
-                {"role": "user", "content": user_prompt}
-            ]
+            messages=messages,
+            response_format={"type": "json_object"}
         )
-        
-        content = response.content[0].text
+
+    try:
+        response = call_llm_with_retry()
+        content = response.choices[0].message.content
+
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -228,7 +243,7 @@ Return ONLY this JSON (no score fields, no numeric adjustments):
         }
 
     except Exception as e:
-        logger.error(f"Claude API Error in generate_explanation: {e}", exc_info=True)
+        logger.error(f"OpenRouter/DeepSeek API Error in generate_explanation: {e}", exc_info=True)
         # Deterministic fallback — still text only, no score influence
         if ml_score >= 80:
             strengths = ["استقرار دخل ممتاز", "التزام تام بسداد الفواتير"]
