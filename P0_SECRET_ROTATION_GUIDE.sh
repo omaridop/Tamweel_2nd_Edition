@@ -62,8 +62,8 @@ git push origin --force --tags
 # STEP 7 — Verify no secrets remain in current files
 # ──────────────────────────────────────────────────────────────────────────────
 # Search for any remaining key patterns in tracked files:
-git grep -r "sk-or-v1" -- "*.py" "*.js" "*.ts" "*.json"
-git grep -r "service_role" -- "*.py" "*.sql"
+git grep -r "OPENROUTER_API_KEY" -- "*.py" "*.js" "*.ts" "*.json"
+git grep -r "SUPABASE_KEY" -- "*.py" "*.sql"
 git grep -r "tamweel_secret_key" -- "*.py"
 git grep -r "adminpassword" -- "*.py"
 # All results should be empty.
