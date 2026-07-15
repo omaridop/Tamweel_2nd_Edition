@@ -44,3 +44,28 @@ tmp/
 # Local run data
 latest_run.json
 runs.json
+
+# Internal and Temporary Docs
+P0_SECRET_ROTATION_GUIDE.sh
+README_VISUAL_ENHANCEMENT_REPORT.md
+backend/investigate_output.txt
+backend/out.txt
+backend/output.txt
+backend/parent_content.txt
+backend/structured_financial_plan.md
+chat_out.txt
+docs/archives/chat_out.txt
+docs/archives/after_complexity.txt
+docs/archives/after_maintainability.txt
+docs/archives/baseline_complexity.txt
+docs/archives/baseline_maintainability.txt
+docs/archives/db_schema.txt
+docs/archives/sklearn_calib.txt
+docs/archives/tree.txt
+docs/archives/tree2.txt
+docs/archives/phases.txt
+docs/archives/user_phases.txt
+docs/archives/security_advice.md
+chat_diff.txt
+chat_diff_utf8.txt
+hybrid_diff.txt
