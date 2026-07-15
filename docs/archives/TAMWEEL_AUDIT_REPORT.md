@@ -17,7 +17,7 @@ The system's external connections and database dependencies were tested to verif
 ## 3. Finding Registry
 
 ### CRITICAL
-*   **Hardcoded JWT Secret**: The `JWT_SECRET` is hardcoded as `"tamweel_secret_key_123"` in `backend/app/main.py`. This is a severe security vulnerability allowing trivial token forgery and unauthorized access to any user account.
+*   **Hardcoded JWT Secret**: The `JWT_SECRET` is hardcoded as `"[REDACTED_DURING_AUDIT]"` in `backend/app/main.py`. This is a severe security vulnerability allowing trivial token forgery and unauthorized access to any user account.
 *   **Broken Semantic Search Pipeline**: The Supabase RPC functions for hybrid search (`hybrid_search_policy_chunks` and `search_frequent_questions`) either do not exist or have mismatched parameter signatures, completely breaking the RAG retrieval mechanism.
 
 ### HIGH

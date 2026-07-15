@@ -24,6 +24,133 @@ from app.pipeline.query_rewriter import rewrite_query
 
 router = APIRouter()
 
+# --- Helper Functions for Chat Route ---
+
+def _process_rag_results(search_data: list) -> tuple[str, list]:
+    """Deduplicates, merges, and reranks RAG search results."""
+    rag_context = ""
+    sources = []
+    
+    # 1. Deduplicate by chunk ID
+    retrieved_chunks = {}
+    for doc in search_data:
+        p_name = doc.get('policy_name')
+        c_id = doc.get('id')
+        key = (p_name, c_id)
+        if key not in retrieved_chunks:
+            retrieved_chunks[key] = {
+                "policy_name": p_name,
+                "chunk_index": doc.get('chunk_index'),
+                "parent_content": doc.get('parent_content') or doc.get('content', ''),
+                "similarity": doc.get('similarity', 0.0)
+            }
+        else:
+            retrieved_chunks[key]["similarity"] = max(retrieved_chunks[key]["similarity"], doc.get('similarity', 0.0))
+            
+    # 2. Merge Adjacent Chunks logically
+    sorted_chunks = sorted(retrieved_chunks.values(), key=lambda x: (x['policy_name'] or "", x['chunk_index'] if x['chunk_index'] is not None else 0))
+    
+    merged_contexts = []
+    current_merge = None
+    
+    for chunk in sorted_chunks:
+        if not current_merge:
+            current_merge = chunk.copy()
+        elif current_merge['policy_name'] == chunk['policy_name'] and current_merge['chunk_index'] is not None and chunk['chunk_index'] is not None and chunk['chunk_index'] == current_merge['chunk_index'] + 1:
+            if chunk['parent_content'].strip() not in current_merge['parent_content']:
+                current_merge['parent_content'] += "\n\n" + chunk['parent_content']
+            current_merge['chunk_index'] = chunk['chunk_index']
+            current_merge['similarity'] = max(current_merge['similarity'], chunk['similarity'])
+        else:
+            merged_contexts.append(current_merge)
+            current_merge = chunk.copy()
+    if current_merge:
+        merged_contexts.append(current_merge)
+        
+    # 3. Rerank and Assemble Final Context
+    merged_contexts.sort(key=lambda x: x['similarity'], reverse=True)
+    merged_contexts = merged_contexts[:3]
+    
+    for idx, doc in enumerate(merged_contexts):
+        if not doc['parent_content'].strip(): continue
+        citation_id = f"C{idx+1}"
+        rag_context += f"[{citation_id}] Source: {doc['policy_name']}\n{doc['parent_content']}\n\n"
+        sources.append({
+            "id": citation_id,
+            "document_name": doc['policy_name'],
+            "page": None,
+            "similarity": doc['similarity']
+        })
+    return rag_context, sources
+
+def _call_llm_with_fallback(messages: list):
+    """Calls DeepSeek with retry logic, falling back to OpenRouter (GPT-4o-mini) on failure."""
+    @retry(
+        retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
+        wait=wait_exponential(multiplier=1, min=1, max=4),
+        stop=stop_after_attempt(3),
+        reraise=True
+    )
+    def call_llm_with_retry():
+        return openai_client.chat.completions.create(
+            model="deepseek/deepseek-chat",
+            max_tokens=1024,
+            messages=messages,
+            response_format={"type": "json_object"}
+        )
+
+    try:
+        response = call_llm_with_retry()
+        return response
+    except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException) as e:
+        return {
+            "response": "عذراً، واجهنا مشكلة في الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
+            "answer": "عذراً، واجهنا مشكلة في الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
+            "support_score": 1,
+            "support_summary": "Network connection error.",
+            "missing_information": "None",
+            "sources": [],
+            "retrieval_stats": {"generation_time_ms": 0, "chunks_retrieved": 0, "chunks_used": 0},
+            "suggested_followups": []
+        }
+    except (openai.AuthenticationError, openai.APIConnectionError, openai.RateLimitError, openai.APIStatusError, Exception) as e:
+        if isinstance(e, openai.APIStatusError) and 400 <= e.status_code < 500:
+            logger.error(f"DeepSeek 4xx logic error: {e.status_code}. Not retrying.")
+        else:
+            logger.warning(f"DeepSeek request failed.\nReason: {type(e).__name__}\nFalling back to OpenRouter...")
+        
+        try:
+            response = openai_client.chat.completions.create(
+                model="openai/gpt-4o-mini",
+                max_tokens=1024,
+                messages=messages,
+                response_format={"type": "json_object"}
+            )
+            logger.info("OpenRouter fallback succeeded.")
+            return response
+        except Exception as fallback_e:
+            logger.error(f"Both LLM providers failed. Fallback error: {fallback_e}")
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "message": "The AI service is temporarily unavailable. Please try again shortly."
+                }
+            )
+
+def _extract_and_parse_json(response_text: str) -> dict:
+    """Robust JSON boundary extraction instead of brittle markdown splitting."""
+    start_idx = response_text.find('{')
+    end_idx = response_text.rfind('}')
+    
+    if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+        json_str = response_text[start_idx:end_idx+1]
+        return json.loads(json_str)
+    else:
+        raise ValueError("No valid JSON object boundaries found in response.")
+
+
+
 @router.post("/api/v1/chat", response_model=ChatResponse)
 async def chat_with_ai(request: ChatRequest, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """
@@ -87,60 +214,7 @@ async def chat_with_ai(request: ChatRequest, background_tasks: BackgroundTasks, 
                 ).execute()
                 
                 if search_res.data:
-                    # 1. Deduplicate by chunk ID
-                    retrieved_chunks = {}
-                    for doc in search_res.data:
-                        p_name = doc.get('policy_name')
-                        # Use content_hash or id to prevent overwriting different chunks from the same page
-                        c_id = doc.get('id')
-                        key = (p_name, c_id)
-                        if key not in retrieved_chunks:
-                            retrieved_chunks[key] = {
-                                "policy_name": p_name,
-                                "chunk_index": doc.get('chunk_index'),
-                                "parent_content": doc.get('parent_content') or doc.get('content', ''),
-                                "similarity": doc.get('similarity', 0.0)
-                            }
-                        else:
-                            retrieved_chunks[key]["similarity"] = max(retrieved_chunks[key]["similarity"], doc.get('similarity', 0.0))
-                    
-                    retrieved_parents = retrieved_chunks
-
-                    # 3. Merge Adjacent Chunks logically
-                    sorted_chunks = sorted(retrieved_parents.values(), key=lambda x: (x['policy_name'] or "", x['chunk_index'] if x['chunk_index'] is not None else 0))
-                    
-                    merged_contexts = []
-                    current_merge = None
-                    
-                    for chunk in sorted_chunks:
-                        if not current_merge:
-                            current_merge = chunk.copy()
-                        elif current_merge['policy_name'] == chunk['policy_name'] and current_merge['chunk_index'] is not None and chunk['chunk_index'] is not None and chunk['chunk_index'] == current_merge['chunk_index'] + 1:
-                            # Avoid appending if parent_content is identical (e.g. duplicate DB rows)
-                            if chunk['parent_content'].strip() not in current_merge['parent_content']:
-                                current_merge['parent_content'] += "\n\n" + chunk['parent_content']
-                            current_merge['chunk_index'] = chunk['chunk_index']
-                            current_merge['similarity'] = max(current_merge['similarity'], chunk['similarity'])
-                        else:
-                            merged_contexts.append(current_merge)
-                            current_merge = chunk.copy()
-                    if current_merge:
-                        merged_contexts.append(current_merge)
-                    
-                    # 4. Rerank and Assemble Final Context
-                    merged_contexts.sort(key=lambda x: x['similarity'], reverse=True)
-                    merged_contexts = merged_contexts[:3] # Keep top 3 merged sections
-                    
-                    for idx, doc in enumerate(merged_contexts):
-                        if not doc['parent_content'].strip(): continue
-                        citation_id = f"C{idx+1}"
-                        rag_context += f"[{citation_id}] Source: {doc['policy_name']}\n{doc['parent_content']}\n\n"
-                        sources.append({
-                            "id": citation_id,
-                            "document_name": doc['policy_name'],
-                            "page": None,
-                            "similarity": doc['similarity']
-                        })
+                    rag_context, sources = _process_rag_results(search_res.data)
             except Exception as e:
                 logger.error(f"RAG Retrieval Error: {e}", exc_info=True)
         
@@ -211,72 +285,15 @@ JSON SCHEMA:
 """
         
         # 5. Call LLM via DeepSeek with OpenRouter Fallback
-        
-        @retry(
-            retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
-            wait=wait_exponential(multiplier=1, min=1, max=4),
-            stop=stop_after_attempt(3),
-            reraise=True
-        )
-        def call_llm_with_retry():
-            return openai_client.chat.completions.create(
-                model="deepseek/deepseek-chat",
-                max_tokens=1024,
-                messages=messages,
-                response_format={"type": "json_object"}
-            )
-
-        try:
-            response = call_llm_with_retry()
-        except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException) as e:
-            return {
-                "response": "عذراً، واجهنا مشكلة في الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
-                "answer": "عذراً، واجهنا مشكلة في الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
-                "support_score": 1,
-                "support_summary": "Network connection error.",
-                "missing_information": "None",
-                "sources": [],
-                "retrieval_stats": {"generation_time_ms": 0, "chunks_retrieved": 0, "chunks_used": 0},
-                "suggested_followups": []
-            }
-        except (openai.AuthenticationError, openai.APIConnectionError, openai.RateLimitError, openai.APIStatusError, Exception) as e:
-            if isinstance(e, openai.APIStatusError) and 400 <= e.status_code < 500:
-                logger.error(f"DeepSeek 4xx logic error: {e.status_code}. Not retrying.")
-            else:
-                logger.warning(f"DeepSeek request failed.\nReason: {type(e).__name__}\nFalling back to OpenRouter...")
-            
-            try:
-                response = openai_client.chat.completions.create(
-                    model="openai/gpt-4o-mini",
-                    max_tokens=1024,
-                    messages=messages,
-                    response_format={"type": "json_object"}
-                )
-                logger.info("OpenRouter fallback succeeded.")
-            except Exception as fallback_e:
-                logger.error(f"Both LLM providers failed. Fallback error: {fallback_e}")
-                return JSONResponse(
-                    status_code=503,
-                    content={
-                        "success": False,
-                        "message": "The AI service is temporarily unavailable. Please try again shortly."
-                    }
-                )
+        response = _call_llm_with_fallback(messages)
+        if isinstance(response, (dict, JSONResponse)):
+            return response
         
         generation_time_ms = int((time.time() - start_time) * 1000)
         
         try:
             response_text = response.choices[0].message.content
-            
-            # Robust JSON boundary extraction instead of brittle markdown splitting
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}')
-            
-            if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
-                json_str = response_text[start_idx:end_idx+1]
-                parsed = json.loads(json_str)
-            else:
-                raise ValueError("No valid JSON object boundaries found in response.")
+            parsed = _extract_and_parse_json(response_text)
         except Exception as e:
             logger.error(f"JSON Parse Error: {e}", exc_info=True)
             parsed = {
