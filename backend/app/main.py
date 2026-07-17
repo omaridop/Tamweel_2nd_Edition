@@ -1,48 +1,68 @@
 import os
 import sys
+import json
 import logging
-import jwt
 from datetime import datetime, timedelta, timezone
-from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
+from tempfile import NamedTemporaryFile
+
+import jwt
+import bcrypt
 from dotenv import load_dotenv
-load_dotenv()
+from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, UploadFile, File, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from openai import OpenAI
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 try:
     from supabase import create_client, Client
 except Exception:
     create_client = None
     Client = None
-from app.schemas import UserFinancialData, ScoringResult, ChatRequest, ChatResponse, RegisterRequest, LoginRequest, ImprovementPlanRequest, TransactionCreate
-import json
-from openai import OpenAI
-import bcrypt
 
+from app.schemas import (
+    UserFinancialData, ScoringResult, ChatRequest, ChatResponse,
+    RegisterRequest, LoginRequest, ImprovementPlanRequest, TransactionCreate
+)
+from app.pipeline.embed import embed_query
+from app.knowledge_ingester import ingest_document
+from app.ml.hybrid_engine import TamweelHybridEngine
+from app.services.redis_cache import is_cacheable_query, generate_cache_key, get_cached_response, set_cached_response
+
+load_dotenv()
+
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# --- Auth constants ---
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET_KEY environment variable is not set. Refusing to start.")
 JWT_ALGORITHM = "HS256"
 
-from app.pipeline.embed import embed_query
-from app.knowledge_ingester import ingest_document
+# --- Password utilities ---
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-from tempfile import NamedTemporaryFile
-
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed.decode('utf-8')
 
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     except Exception:
         # Fallback for old plaintext passwords from the SQL seed script
         return plain_password == hashed_password
 
-from app.ml.hybrid_engine import TamweelHybridEngine
+# --- Rate limiter ---
+# Uses the client IP as the key. In production behind a proxy, ensure
+# FORWARDED_ALLOW_IPS or X-Forwarded-For is trusted so the real IP is used.
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
+# --- App setup ---
 app = FastAPI(title="Tamweel AI Backend", version="1.0.0")
 
 # CORS configuration
@@ -59,7 +79,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Supabase configuration
+# Attach limiter to app state and register the 429 handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# --- External service clients ---
+
+# Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 try:
@@ -71,32 +97,24 @@ except Exception as e:
     logger.error(f"⚠️ Supabase Connection Failed: {e}", exc_info=True)
     supabase = None
 
-# Initialize the Hybrid Engine
-engine = TamweelHybridEngine()
-
-# Initialize OpenAI Client to point to OpenRouter
+# OpenRouter (primary LLM gateway)
 openai_client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
-# Initialize DeepSeek Client
+# DeepSeek (direct client, kept for reference)
 deepseek_client = OpenAI(
     base_url="https://api.deepseek.com/v1",
     api_key=os.getenv("DEEPSEEK_API_KEY")
 )
 
-from app.services.redis_cache import is_cacheable_query, generate_cache_key, get_cached_response, set_cached_response
+# Hybrid scoring engine
+engine = TamweelHybridEngine()
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Tamweel AI Backend API"}
+# --- Auth dependency ---
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "supabase": "connected" if supabase else "disconnected"}
-
-async def get_current_user(authorization: str = Header(None)):
+async def get_current_user(authorization: str = Header(None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid or missing Authorization header")
     token = authorization.split(" ")[1]
@@ -106,7 +124,17 @@ async def get_current_user(authorization: str = Header(None)):
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+# --- Core routes ---
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Tamweel AI Backend API"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "supabase": "connected" if supabase else "disconnected"}
+
+# --- Router registration ---
 
 from app.routes import auth, chat, score, users, admin
 

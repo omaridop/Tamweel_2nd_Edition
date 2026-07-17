@@ -6,7 +6,7 @@ import { DocumentDrawer } from './DocumentDrawer';
 import { ChatMessageItem } from './ChatMessageItem';
 import { generateId } from './utils';
 import { ChatMessageData, Metric } from './types';
-import { fetchWithAuth } from '../../services/api';
+import { fetchWithAuth, scoringService } from '../../services/api';
 import { X } from 'lucide-react';
 
 interface RAGChatWidgetProps {
@@ -65,51 +65,106 @@ export const RAGChatWidget: React.FC<RAGChatWidgetProps> = ({ onClose }) => {
     setIsLoading(true);
 
     const agentMsgId = generateId();
-    setStreamingMessageId(agentMsgId);
-
-    try {
-      const data = await fetchWithAuth('/chat', {
-        method: 'POST',
-        body: JSON.stringify({
-          user_id: 'test_user',
-          message: queryText,
-          role: 'user',
-          history: messages.filter(m => m.role !== 'error').map(m => ({
-            role: m.role === 'agent' ? 'assistant' : m.role,
-            content: m.text || m.answer || ''
-          }))
-        })
-      });
-
-      const responseText = data.answer || data.response || 'No valid response received.';
-
-      setMessages(prev => {
-        // filter out previous errors if this is a retry
-        const filtered = isRetry ? prev.filter(m => m.role !== 'error') : prev;
-        return [...filtered, {
-          id: agentMsgId,
-          role: 'agent',
-          text: responseText,
-          answer: data.answer,
-          support_score: data.support_score,
-          support_summary: data.support_summary,
-          missing_information: data.missing_information,
-          sources: data.sources || [],
-          retrieval_stats: data.retrieval_stats,
-          suggested_followups: data.suggested_followups || [],
-          timestamp: Date.now(),
-          originalQuery: queryText
-        }];
-      });
-    } catch (err: any) {
-      console.error(err);
-      setMessages(prev => [...prev, {
-        id: generateId(),
-        role: 'error',
-        text: 'Failed to connect to the Tamweel AI service. Please try again.',
+    // Insert a blank streaming placeholder message immediately
+    setMessages(prev => {
+      const filtered = isRetry ? prev.filter(m => m.role !== 'error') : prev;
+      return [...filtered, {
+        id: agentMsgId,
+        role: 'agent',
+        text: '',
+        answer: '',
+        sources: [],
         timestamp: Date.now(),
         originalQuery: queryText
-      }]);
+      }];
+    });
+    setStreamingMessageId(agentMsgId);
+
+    const abortController = new AbortController();
+
+    const history = messages
+      .filter(m => m.role !== 'error')
+      .map(m => ({
+        role: m.role === 'agent' ? 'assistant' : m.role,
+        content: m.text || m.answer || ''
+      }));
+
+    try {
+      // Try streaming first
+      await (scoringService as any).chatStream(
+        'test_user',
+        queryText,
+        'user',
+        history,
+        // onToken — append each piece as it arrives
+        (token: string) => {
+          setMessages(prev => prev.map(m =>
+            m.id === agentMsgId
+              ? { ...m, text: (m.text || '') + token, answer: (m.answer || '') + token }
+              : m
+          ));
+        },
+        // onDone — merge final metadata
+        (meta: any) => {
+          setMessages(prev => prev.map(m =>
+            m.id === agentMsgId
+              ? {
+                  ...m,
+                  sources: meta?.sources || [],
+                  retrieval_stats: meta?.retrieval_stats,
+                  suggested_followups: meta?.suggested_followups || [],
+                  support_score: meta?.support_score,
+                  support_summary: meta?.support_summary,
+                  missing_information: meta?.missing_information,
+                }
+              : m
+          ));
+        },
+        abortController.signal
+      );
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+
+      console.warn('Streaming failed, falling back to /chat:', err);
+      // --- Fallback: non-streaming /chat ---
+      try {
+        const data = await fetchWithAuth('/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: 'test_user',
+            message: queryText,
+            role: 'user',
+            history
+          })
+        });
+        const responseText = data.answer || data.response || 'No valid response received.';
+        setMessages(prev => prev.map(m =>
+          m.id === agentMsgId
+            ? {
+                ...m,
+                text: responseText,
+                answer: data.answer,
+                sources: data.sources || [],
+                retrieval_stats: data.retrieval_stats,
+                suggested_followups: data.suggested_followups || [],
+                support_score: data.support_score,
+                support_summary: data.support_summary,
+                missing_information: data.missing_information,
+              }
+            : m
+        ));
+      } catch (fallbackErr: any) {
+        console.error('Both streaming and fallback failed:', fallbackErr);
+        setMessages(prev => prev.map(m =>
+          m.id === agentMsgId
+            ? {
+                ...m,
+                role: 'error',
+                text: 'Failed to connect to the Tamweel AI service. Please try again.',
+              }
+            : m
+        ));
+      }
     } finally {
       setIsLoading(false);
       setStreamingMessageId(null);

@@ -149,6 +149,61 @@ export const scoringService = {
   },
 
   /**
+   * Streaming chat — calls /api/v1/chat/stream (SSE).
+   * @param {string}   userId
+   * @param {string}   message
+   * @param {string}   role
+   * @param {Array}    history
+   * @param {Function} onToken  — called with each string token as it arrives
+   * @param {Function} onDone   — called once with the final meta object {sources, confidence, ...}
+   * @param {AbortSignal} signal
+   */
+  chatStream: async (userId, message, role = 'user', history = [], onToken, onDone, signal) => {
+    const authHeaders = getAuthHeaders();
+    const response = await fetch(`${BASE_URL}/api/v1/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({ user_id: userId, message, role, history }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.detail || `Stream Error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const parsed = JSON.parse(line.slice(6));
+          if (parsed.done) {
+            onDone && onDone(parsed.meta);
+          } else if (parsed.token !== undefined) {
+            onToken && onToken(parsed.token);
+          }
+        } catch {
+          // ignore malformed SSE lines
+        }
+      }
+    }
+  },
+
+  /**
    * Register a new user
    */
   register: async (userData) => {
@@ -219,6 +274,31 @@ export const scoringService = {
       return await response.json();
     } catch (error) {
       console.error('Improvement Plan Service Error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Generate a structured 90-day credit score improvement roadmap
+   */
+  generateRoadmap: async (userId, email) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/v1/ai/roadmap`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ user_id: userId, email }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate roadmap');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Roadmap Service Error:', error);
       throw error;
     }
   },

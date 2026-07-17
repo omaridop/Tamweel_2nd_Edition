@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/ui/Button';
-import { Calculator, TrendingUp, TrendingDown, Info, Sliders, Sparkles } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, Info, Sliders, Sparkles, CreditCard } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import useAuthStore from '../../store/useAuthStore';
 
@@ -54,6 +54,36 @@ const ScoreSimulator = () => {
   };
 
   const scoreDiff = simulatedScore - baseScore;
+
+  // ── Repayment Simulator ──────────────────────────────────────
+  const approvedAmount = (detailedAssessment?.approved_amount_jod || baseScore * 8);
+
+  const [repayment, setRepayment] = useState({
+    amount: approvedAmount > 0 ? Math.min(approvedAmount, 5000) : 1000,
+    rate: 8,      // annual % interest
+    termMonths: 24,
+  });
+
+  const repayCalc = useMemo(() => {
+    const { amount, rate, termMonths } = repayment;
+    if (termMonths === 0 || rate === 0) {
+      return {
+        monthly: amount / (termMonths || 1),
+        totalInterest: 0,
+        totalRepayment: amount,
+      };
+    }
+    const r = rate / 100 / 12; // monthly rate
+    const n = termMonths;
+    const monthly = (amount * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const totalRepayment = monthly * n;
+    const totalInterest = totalRepayment - amount;
+    return {
+      monthly: Math.round(monthly * 100) / 100,
+      totalInterest: Math.round(totalInterest * 100) / 100,
+      totalRepayment: Math.round(totalRepayment * 100) / 100,
+    };
+  }, [repayment]);
 
   return (
     <MainLayout>
@@ -224,7 +254,92 @@ const ScoreSimulator = () => {
               </p>
            </div>
         </div>
-      </div>
+       </div>
+
+        {/* ── Repayment Simulator ─────────────────────────────── */}
+        <div className="bg-white rounded-3xl shadow-soft border border-slate-100 p-8 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-emerald-50 rounded-lg">
+              <CreditCard className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-primary">Repayment Simulator</h2>
+              <p className="text-sm text-slate-500">Adjust loan amount, interest rate, and term to see your monthly payment.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Sliders */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Loan Amount */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <label className="font-bold text-sm text-primary">Loan Amount</label>
+                  <span className="font-bold text-emerald-600">{repayment.amount.toLocaleString()} JOD</span>
+                </div>
+                <input
+                  type="range" min="100" max="10000" step="100"
+                  value={repayment.amount}
+                  onChange={e => setRepayment(p => ({ ...p, amount: Number(e.target.value) }))}
+                  className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                  aria-label="Loan Amount"
+                />
+              </div>
+
+              {/* Interest Rate */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <label className="font-bold text-sm text-primary">Annual Interest Rate</label>
+                  <span className="font-bold text-emerald-600">{repayment.rate}%</span>
+                </div>
+                <input
+                  type="range" min="1" max="30" step="0.5"
+                  value={repayment.rate}
+                  onChange={e => setRepayment(p => ({ ...p, rate: Number(e.target.value) }))}
+                  className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                  aria-label="Annual Interest Rate"
+                />
+              </div>
+
+              {/* Loan Term */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <label className="font-bold text-sm text-primary">Loan Term</label>
+                  <span className="font-bold text-emerald-600">{repayment.termMonths} months</span>
+                </div>
+                <input
+                  type="range" min="3" max="60" step="3"
+                  value={repayment.termMonths}
+                  onChange={e => setRepayment(p => ({ ...p, termMonths: Number(e.target.value) }))}
+                  className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                  aria-label="Loan Term in Months"
+                />
+              </div>
+            </div>
+
+            {/* Results Panel */}
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-2xl p-6 flex flex-col justify-center gap-5 shadow-xl shadow-emerald-900/20">
+              <div>
+                <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest mb-1">Monthly Payment</p>
+                <p className="text-4xl font-black">{repayCalc.monthly.toLocaleString()} <span className="text-lg font-medium text-emerald-200">JOD</span></p>
+              </div>
+              <div className="border-t border-white/20 pt-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-emerald-200">Principal</span>
+                  <span className="font-bold">{repayment.amount.toLocaleString()} JOD</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-emerald-200">Total Interest</span>
+                  <span className="font-bold">{repayCalc.totalInterest.toLocaleString()} JOD</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-white/20 pt-3">
+                  <span className="text-emerald-100 font-bold">Total Repayment</span>
+                  <span className="font-black text-white">{repayCalc.totalRepayment.toLocaleString()} JOD</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
     </MainLayout>
   );
 };
