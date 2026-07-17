@@ -4,10 +4,10 @@ import { TwinPanelLayout } from '../../components/TwinPanelLayout';
 
 import CreditScoreGauge from './CreditScoreGauge';
 import SpendingAnalytics from './SpendingAnalytics';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { Brain, TrendingUp, Wallet, ArrowUpRight, Info, Loader2, Lightbulb, ShieldAlert, Activity, CheckCircle2 } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, Minus, Wallet, ArrowUpRight, Info, Loader2, Lightbulb, ShieldAlert, Activity, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../../components/ui/Button';
 import { twMerge } from 'tailwind-merge';
@@ -62,23 +62,16 @@ const UserDashboard = () => {
             setLatestAssessment(sorted[0]);
           }
           
-          // Format history for chart (last 6 entries)
-          const chartData = sorted.slice(0, 6).reverse().map(item => ({
-            month: new Date(item.generated_at).toLocaleDateString('en-US', { month: 'short' }),
-            score: item.credit_score
-          }));
+          // Format history for chart — use short date so same-month entries stay unique
+          const chartData = sorted.slice(0, 8).reverse().map((item, idx) => {
+            const d = new Date(item.generated_at);
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return { label, score: Math.round(item.credit_score), idx };
+          });
           setHistory(chartData);
         } else {
-          // Fallback history for new users or when Supabase is empty
-          const fallbackScore = currentDetailedAssessment?.credit_score || currentDetailedAssessment?.final_score || 70;
-          setHistory([
-            { month: 'Jan', score: 45 },
-            { month: 'Feb', score: 52 },
-            { month: 'Mar', score: 48 },
-            { month: 'Apr', score: 60 },
-            { month: 'May', score: 65 },
-            { month: 'Jun', score: fallbackScore },
-          ]);
+          // No fallback data injection
+          setHistory([]);
         }
       } catch {
         // Fall silent on error
@@ -106,6 +99,17 @@ const UserDashboard = () => {
     bill_history: 20,
     financial_health: 20
   };
+
+  // Score trend: compare first vs last entry in history
+  const scoreTrend = useMemo(() => {
+    if (history.length < 2) return { direction: 'flat', delta: 0 };
+    const first = history[0].score;
+    const last  = history[history.length - 1].score;
+    const delta = last - first;
+    if (delta > 2)  return { direction: 'up',   delta };
+    if (delta < -2) return { direction: 'down', delta };
+    return { direction: 'flat', delta };
+  }, [history]);
 
   const xaiFactors = useMemo(() => [
     { label: 'Income Stability', impact: breakdown.income_stability > 30 ? 'High' : 'Medium', value: (breakdown.income_stability / 40) * 100, color: 'bg-emerald-500' },
@@ -216,30 +220,65 @@ const UserDashboard = () => {
                 <h3 className="font-bold text-primary">Score History</h3>
                 <p className="text-xs text-slate-400 font-medium">Your progress over the last assessments</p>
               </div>
-              <div className="flex items-center text-emerald-500 font-bold bg-emerald-50 px-3 py-1 rounded-full text-sm">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                Live Sync
+              <div className="flex items-center gap-2">
+                {history.length >= 2 && (
+                  scoreTrend.direction === 'up' ? (
+                    <div className="flex items-center text-emerald-500 font-bold bg-emerald-50 px-3 py-1 rounded-full text-sm">
+                      <TrendingUp className="w-4 h-4 mr-1" />
+                      +{scoreTrend.delta} pts
+                    </div>
+                  ) : scoreTrend.direction === 'down' ? (
+                    <div className="flex items-center text-rose-500 font-bold bg-rose-50 px-3 py-1 rounded-full text-sm">
+                      <TrendingDown className="w-4 h-4 mr-1" />
+                      {scoreTrend.delta} pts
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-full text-sm">
+                      <Minus className="w-4 h-4 mr-1" />
+                      Stable
+                    </div>
+                  )
+                )}
               </div>
             </div>
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={history.length > 0 ? history : [{month: 'N/A', score: 0}]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} dy={10} />
-                  <YAxis hide domain={[0, 100]} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="#10B981" 
-                    strokeWidth={4} 
-                    dot={{ r: 6, fill: '#10B981', strokeWidth: 3, stroke: '#fff' }}
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {history.length === 0 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <Activity className="w-8 h-8 mb-2 opacity-50" />
+                  <p className="text-sm font-medium text-slate-500">No score history yet.</p>
+                  <p className="text-xs mt-1">Take an assessment to establish your baseline.</p>
+                </div>
+              ) : history.length === 1 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <CheckCircle2 className="w-8 h-8 mb-2 text-emerald-500 opacity-80" />
+                  <p className="text-sm font-bold text-slate-700">Baseline Established: {history[0].score}</p>
+                  <p className="text-xs text-slate-500 mt-2 max-w-[250px] text-center">
+                    Your first assessment is complete. Score trends will appear here after your next assessment.
+                  </p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={history}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} dy={10} />
+                    <YAxis hide domain={[0, 100]} />
+                    <ReferenceLine y={60} stroke="#E2E8F0" strokeDasharray="4 4" label={{ value: '60', position: 'right', fontSize: 10, fill: '#94A3B8' }} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                      formatter={(value) => [`${value} / 100`, 'Credit Score']}
+                      labelFormatter={(label) => `Assessment: ${label}`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke={scoreTrend.direction === 'down' ? '#F43F5E' : '#10B981'}
+                      strokeWidth={4}
+                      dot={{ r: 6, fill: scoreTrend.direction === 'down' ? '#F43F5E' : '#10B981', strokeWidth: 3, stroke: '#fff' }}
+                      activeDot={{ r: 8 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </motion.div>
