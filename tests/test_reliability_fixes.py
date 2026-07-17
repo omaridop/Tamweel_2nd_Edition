@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
@@ -103,3 +103,48 @@ def test_llm_fallback_success():
         mock_create.return_value = mock_response
         response = _call_llm_with_fallback([{"role": "user", "content": "test"}])
         assert response == mock_response
+
+
+# ---------------------------------------------------------------------------
+# Missing cases identified from the deleted __main__ block
+# ---------------------------------------------------------------------------
+
+def test_intent_classification_fuzzy_typo():
+    # "credi score" is a single-character typo for "credit score"
+    # rapidfuzz partial_ratio should hit the PROFILE_LIGHT keyword group
+    result = classify_intent("what is my credi score?")
+    assert result.intent == IntentType.PROFILE_LIGHT, (
+        "Fuzzy matching should resolve single-char typo 'credi score' → PROFILE_LIGHT"
+    )
+
+def test_intent_classification_possessive_my_income():
+    # "my income" is in PERSONAL_KEYWORDS and PROFILE_LIGHT keywords — exact match path
+    result = classify_intent("Tell me about my income.")
+    assert result.intent == IntentType.PROFILE_LIGHT
+
+def test_intent_classification_possessive_my_job():
+    # "my job" — "job" is in the PROFILE_LIGHT keyword set
+    result = classify_intent("what is my job?")
+    assert result.intent == IntentType.PROFILE_LIGHT
+
+def test_intent_classification_arabic_profile_light():
+    # Arabic: "What is my credit score?" — "درجتي" is in PERSONAL_KEYWORDS
+    result = classify_intent("ما هي درجتي الائتمانية؟")
+    assert result.intent == IntentType.PROFILE_LIGHT
+
+def test_intent_classification_arabic_full_review():
+    # Arabic: "Tell me about my financial situation" — "وضعي المالي" is in FULL_REVIEW keywords
+    result = classify_intent("أخبرني عن وضعي المالي")
+    assert result.intent == IntentType.FULL_REVIEW
+
+def test_intent_classification_arabic_financial_advice():
+    # Arabic: "How do I save money?" — "كيف أوفر" is in FINANCIAL_ADVICE keywords
+    result = classify_intent("كيف أوفر المال؟")
+    assert result.intent == IntentType.FINANCIAL_ADVICE
+
+def test_intent_classification_arabic_generic():
+    # Arabic: "What is macroeconomics?" — verified via probe to return GENERIC.
+    # "الادخار" (saving) hits FINANCIAL_ADVICE; "التمويل" hits DTI_ANALYSIS.
+    # This query contains no matching keyword in any intent group.
+    result = classify_intent("ما هو الاقتصاد الكلي؟")
+    assert result.intent == IntentType.GENERIC
