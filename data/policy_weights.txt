@@ -1,0 +1,4 @@
+Scoring Weights
+- Income Stability: 40%
+- Bill Payment History: 30%
+- Financial Health: 30%

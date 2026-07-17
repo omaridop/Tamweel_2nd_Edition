@@ -1,0 +1,33 @@
+# Tamweel AI Credit Scoring Policy
+
+## Jordan Informal Economy Credit Context & Market Benchmarks
+- Minimum wage: 260 JOD/month
+- Average informal worker income: 150-400 JOD/month
+- ZainCash avg monthly transaction: 180 JOD
+- CliQ avg monthly transfer: 220 JOD
+- Microloan range: 100-1000 JOD
+
+## Score Thresholds & Approvals
+- 80-100: Excellent → Approved up to 1000 JOD
+- 60-79:  Good → Approved up to 600 JOD
+- 45-59:  Fair → Conditional Approval up to 300 JOD
+- 30-44:  Poor → Conditional Approval up to 150 JOD
+- 0-29:   High Risk → Rejected
+
+## Scoring Weights
+- Income Stability: 40%
+- Bill Payment History: 30%
+- Financial Health: 30%
+
+## Red Flags & Penalties
+- 3+ late bill payments: -25 points
+- Balance near zero consistently: -15 points
+- Zero income transfers 30+ days: -20 points
+
+## Freelancer Income Patterns (Jordan)
+- Upwork/Freelancer Income Patterns: irregular, traceable 1-4 weeks
+- Payment regularity varies based on project milestones
+
+## Gig Economy Patterns (Jordan)
+- Gig Economy Patterns (Uber/Careem/Delivery): daily small amounts, highly regular
+- Daily income peaks on weekends

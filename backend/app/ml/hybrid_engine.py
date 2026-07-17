@@ -1,5 +1,7 @@
 import os
+import sys
 import json
+import random
 import joblib
 import logging
 import pandas as pd
@@ -9,7 +11,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../ml_pipeline")))
 from rag_engine import generate_explanation, compute_score_breakdown
 
@@ -47,6 +49,7 @@ PENALTY_POINTS = 5
 RELIABILITY_MIN = 3
 BONUS_POINTS = 5
 EDGE_ZONES = [(28, 32), (43, 47), (58, 62), (78, 82)]
+MODEL_VERSION = "xgboost-classifier-v1"
 
 try:
     if SUPABASE_URL and SUPABASE_KEY:
@@ -129,7 +132,6 @@ class TamweelHybridEngine:
         else:
             # ─── BIAS MITIGATION: 1% EXPLORATION LOOP ───
             # To prevent automation of historical biases, we randomly approve 1% of high-risk profiles.
-            import random
             if random.random() < EXPLORATION_RATE:
                 result['decision'] = "Approved (Exploration Cohort)"
                 result['approved_amount_jod'] = min(requested_amount, EXPLORATION_LIMIT) # Small controlled limit
@@ -261,7 +263,7 @@ class TamweelHybridEngine:
         # authenticated user's email that was passed into run_pipeline(). This is
         # checked below and will raise if they don't match, preventing a spoofed
         # audit record even if this function is somehow called with mismatched data.
-        MODEL_VERSION = "xgboost-classifier-v1"
+
 
         applicant_email = user_data.get("email", "")
         asserted_email = user_data.get("_authenticated_email", applicant_email)

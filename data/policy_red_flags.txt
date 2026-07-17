@@ -1,0 +1,4 @@
+Red Flags & Penalties
+- 3+ late bill payments: -25 points
+- Balance near zero consistently: -15 points
+- Zero income transfers 30+ days: -20 points
