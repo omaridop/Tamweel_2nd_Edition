@@ -15,6 +15,8 @@ Mapped to Intent Tiers:
 - FULL_REVIEW: email, credit_score, risk_level, avg_monthly_income_jod, profession, profession_category, decision, approved_amount_jod, reason
 """
 
+from collections import defaultdict
+
 from app.services.intent_classifier import IntentResult, IntentType
 from app.services.intelligence_cache import get_or_compute_intelligence
 import logging
@@ -93,7 +95,6 @@ async def fetch_context_for_intent(supabase, user_id: str, user_email: str, mess
         
         tx_list = []
         if tx_res.data:
-            from collections import defaultdict
             monthly_aggregates = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
             
             for tx in tx_res.data:

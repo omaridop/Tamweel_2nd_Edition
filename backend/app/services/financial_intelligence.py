@@ -4,6 +4,8 @@ from collections import defaultdict
 from typing import Dict, Any
 from decimal import Decimal
 
+from app.utils import parse_iso_datetime
+
 async def compute_financial_intelligence(supabase, user_email: str, months: int = 6) -> dict:
     # 1. Fetch user's profile
     profile_res = supabase.table("tamweel_results") \
@@ -52,7 +54,6 @@ async def compute_financial_intelligence(supabase, user_email: str, months: int 
         if not created_at_str:
             continue
             
-        from app.utils import parse_iso_datetime
         try:
             created_at = parse_iso_datetime(created_at_str).replace(tzinfo=None)
         except Exception:

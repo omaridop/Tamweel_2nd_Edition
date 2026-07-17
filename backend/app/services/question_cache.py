@@ -2,7 +2,9 @@ import re
 from datetime import datetime, timezone
 
 import logging
-from app.utils import ENGLISH_STOPWORDS as STOPWORDS
+from app.utils import ENGLISH_STOPWORDS as STOPWORDS, parse_iso_datetime
+
+_CACHE_TTL_SECONDS = 24 * 3600  # 24 hours
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +40,10 @@ async def lookup_cache(supabase, query_embedding: list[float], query_keywords: l
             created_at_str = match.get('created_at')
             if created_at_str:
                 try:
-                    from app.utils import parse_iso_datetime
                     created_at = parse_iso_datetime(created_at_str)
                     age = datetime.now(timezone.utc) - created_at
-                    
-                    if age.total_seconds() > 24 * 3600:
+
+                    if age.total_seconds() > _CACHE_TTL_SECONDS:
                         # Expired: Delete from DB and ignore
                         try:
                             supabase.table('frequent_questions').delete().eq('id', match['id']).execute()

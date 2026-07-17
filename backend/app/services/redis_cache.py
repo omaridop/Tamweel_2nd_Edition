@@ -5,8 +5,12 @@ from datetime import datetime, timezone
 import redis.asyncio as redis
 import logging
 from app.services.intent_classifier import IntentType
+from app.utils import ENGLISH_STOPWORDS, ARABIC_STOPWORDS
 
 logger = logging.getLogger(__name__)
+
+# Cache TTL
+CACHE_TTL_SECONDS = 86400  # 24 hours
 
 # Singleton connection
 redis_client = None
@@ -55,7 +59,6 @@ def normalize_query(query: str) -> str:
     normalized = normalized.replace('ى', 'ي')
     
     # Stop words
-    from app.utils import ENGLISH_STOPWORDS, ARABIC_STOPWORDS
     stop_words = ENGLISH_STOPWORDS.union(ARABIC_STOPWORDS)
     
     words = normalized.split()
@@ -108,7 +111,7 @@ async def set_cached_response(cache_key: str, answer: str, citations: list[str],
             "confidence": confidence,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-        await client.set(cache_key, json.dumps(payload), ex=86400)
+        await client.set(cache_key, json.dumps(payload), ex=CACHE_TTL_SECONDS)
     except Exception as e:
         logger.error(f"Redis set error: {e}", exc_info=True)
 

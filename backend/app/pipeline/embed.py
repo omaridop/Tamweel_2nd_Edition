@@ -5,6 +5,7 @@ All vectors are L2-normalized. Implements batching and retry logic for resilienc
 
 import math
 import os
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from typing import Sequence
 
@@ -13,6 +14,9 @@ from google import genai
 from google.genai.errors import APIError
 
 from .config import settings
+
+_OPENROUTER_EMBED_URL = "https://openrouter.ai/api/v1/embeddings"
+_DEFAULT_EMBED_MODEL = "openai/text-embedding-3-small"
 
 _RETRYABLE = (APIError, Exception) # Catch APIError or connectivity issues
 
@@ -26,15 +30,11 @@ def _normalize(vec: Sequence[float]) -> list[float]:
        wait=wait_exponential(multiplier=1, min=2, max=30),
        stop=stop_after_attempt(5), reraise=True)
 def _embed_batch(inputs: list[str]) -> list[list[float]]:
-    import requests
-    
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise Exception("OPENROUTER_API_KEY is missing.")
-        
-    model_name = "openai/text-embedding-3-small"
-    if hasattr(settings, "EMBED_MODEL") and settings.EMBED_MODEL:
-        model_name = settings.EMBED_MODEL
+
+    model_name = settings.EMBED_MODEL if (hasattr(settings, "EMBED_MODEL") and settings.EMBED_MODEL) else _DEFAULT_EMBED_MODEL
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -50,7 +50,7 @@ def _embed_batch(inputs: list[str]) -> list[list[float]]:
         "input": inputs,
     }
     
-    res = requests.post("https://openrouter.ai/api/v1/embeddings", headers=headers, json=payload)
+    res = requests.post(_OPENROUTER_EMBED_URL, headers=headers, json=payload)
     if not res.ok:
         raise Exception(f"OpenRouter embedding failed: {res.text}")
         

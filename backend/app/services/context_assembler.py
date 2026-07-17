@@ -1,5 +1,7 @@
 import json
 
+from app.services.intent_classifier import IntentType
+
 def transform_for_llm(data: dict) -> dict:
     if not data:
         return data
@@ -50,7 +52,6 @@ def apply_sliding_window(history: list, max_turns: int = 6) -> list:
         return []
     return history[-max_turns:] if len(history) > max_turns else history
 
-from app.services.intent_classifier import IntentType
 
 def assemble_messages(user_message: str, context_data: dict, history: list, rag_context_xml: str = "", intent_type: IntentType = IntentType.GENERIC) -> list:
     """Assembles the lean message array for the LLM."""

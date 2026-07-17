@@ -1,6 +1,7 @@
 import datetime
 import logging
 from app.services.financial_intelligence import compute_financial_intelligence
+from app.utils import parse_iso_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,6 @@ async def get_or_compute_intelligence(supabase, user_email: str, max_age_hours: 
             computed_at_str = record.get("computed_at")
             if computed_at_str:
                 try:
-                    from app.utils import parse_iso_datetime
                     computed_at = parse_iso_datetime(computed_at_str)
                     age = datetime.datetime.now(datetime.timezone.utc) - computed_at
                     if age.total_seconds() < max_age_hours * 3600:

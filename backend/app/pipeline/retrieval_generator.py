@@ -1,4 +1,5 @@
 import json
+import re
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from openai import APIError
 from .config import settings
@@ -41,7 +42,6 @@ def generate_bilingual_representation(text: str) -> dict:
     # parse json
     s = content.strip()
     if s.startswith("```"):
-        import re
         s = re.sub(r"^```[a-zA-Z]*\n?", "", s)
         s = re.sub(r"\n?```$", "", s).strip()
     
