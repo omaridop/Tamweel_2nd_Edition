@@ -131,6 +131,22 @@ STRICT RULES:
    Do NOT invent statistics or make up reasons.
 """
 
+
+@retry(
+    retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
+    wait=wait_exponential(multiplier=1, min=1, max=4),
+    stop=stop_after_attempt(3),
+    reraise=True
+)
+def _call_explanation_llm(messages: list) -> dict:
+    """Isolated, module-level LLM call with retry — avoids re-decoration on every generate_explanation() invocation."""
+    return client.chat.completions.create(
+        model="deepseek/deepseek-chat",
+        max_tokens=600,
+        messages=messages,
+        response_format={"type": "json_object"}
+    )
+
 def generate_explanation(user_data: Dict[str, Any], ml_score: float, financial_metrics: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Generates a human-readable Arabic explanation for a credit decision.
@@ -145,7 +161,40 @@ def generate_explanation(user_data: Dict[str, Any], ml_score: float, financial_m
     - Any attempt by the LLM to output numeric scores is explicitly ignored by the
       parser below, which only extracts the three allowed text fields.
     """
-    context = retrieve_context(user_data)
+    # Phase B: Dynamic Retrieval
+    context = ""
+    try:
+        from app.routes.chat import _process_rag_results
+        from app.pipeline.embed import embed_query
+        from app.main import supabase
+
+        profession = user_data.get('profession_category', 'general')
+        late_bills = user_data.get('late_bills_count', 0)
+        
+        search_query = f"Credit scoring policy and financial risk patterns for {profession} worker"
+        if late_bills > 0:
+            search_query += f" with {late_bills} late bills"
+
+        if supabase:
+            query_vector = embed_query(search_query)
+            search_res = supabase.rpc(
+                "hybrid_search_policy_chunks",
+                {"query_text": search_query, "query_embedding": query_vector, "match_count": 3}
+            ).execute()
+            
+            if search_res.data:
+                rag_context, _ = _process_rag_results(search_res.data)
+                if rag_context:
+                    context = rag_context
+    except Exception as e:
+        logger.error(f"Dynamic RAG retrieval failed in generate_explanation: {e}", exc_info=True)
+
+    if not context:
+        # Zero-chunks fallback / Safety string + In-memory RAG_KNOWLEDGE_BASE fallback
+        context = "No specific policy documents found for this profile. Base the explanation strictly on the provided financial metrics and general standard credit principles.\n\n"
+        context += retrieve_context(user_data)
+
+    logger.info(f"RETRIEVED RAG CONTEXT:\n{context}\n")
     
     financial_str = ""
     if financial_metrics:
@@ -204,22 +253,8 @@ Return ONLY this JSON (no score fields, no numeric adjustments):
         {"role": "user", "content": user_prompt}
     ]
 
-    @retry(
-        retry=retry_if_exception_type((httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException)),
-        wait=wait_exponential(multiplier=1, min=1, max=4),
-        stop=stop_after_attempt(3),
-        reraise=True
-    )
-    def call_llm_with_retry():
-        return client.chat.completions.create(
-            model="deepseek/deepseek-chat",
-            max_tokens=600,
-            messages=messages,
-            response_format={"type": "json_object"}
-        )
-
     try:
-        response = call_llm_with_retry()
+        response = _call_explanation_llm(messages)
         content = response.choices[0].message.content
 
         if "```json" in content:
