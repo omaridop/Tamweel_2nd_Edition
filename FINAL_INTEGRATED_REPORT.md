@@ -10,7 +10,7 @@
 3. **Security (Significantly Hardened):** Upgraded from "Actively Vulnerable" to "Significantly Hardened." Role-spoofing via JSON payloads was eliminated, strict JWT verification enforces roles, and critical prompt injections via RAG have been mitigated via robust HTML and brace escaping. *Note: This represents a targeted fix for the two vulnerabilities found, not a full penetration test (no evaluation of rate limiting, dependency vulnerabilities, or session/token expiry).*
 4. **Software Engineering (Functional but Rough):** The critical concurrency event loop blocker in scoring has been resolved via `run_in_threadpool`, enabling non-blocking execution (tested at 13.51s for 3 concurrent users). However, error logs remain fragmented and testing infrastructure relies on messy test scripts.
 5. **FinTech Product Logic (Acceptable):** The LLM accurately summarizes financial context now that it's anchored securely to the deterministic ML score without hallucinating metrics from injected prompts. However, the system still lacks deep, audit-ready financial reasoning.
-6. **AI/ML Engineering (Weak):** Despite prompt injection protection, the core RAG is extremely primitive. The ML pipeline is highly deterministic but the "RAG" component is essentially a hardcoded dictionary mapping. There is no vector database or semantic similarity search.
+6. **AI/ML Engineering (Competent):** The RAG pipeline utilizes true semantic retrieval powered by a Postgres pgvector database (Supabase) and OpenAI embeddings. The system handles adversarial inputs gracefully, though it still lacks deep ML interpretability features like SHAP.
 
 ## 2. Top 3 Strengths
 1. **Hardened API Boundaries:** Security fixes successfully eliminated role spoofing and backdoor access. The system strictly respects JWT claims.
@@ -18,7 +18,7 @@
 3. **Resilient against Prompt Injection:** The explanation generation LLM properly escapes malicious formatting (e.g., adversarial arrays or system override strings), returning standard outputs instead of blindly complying.
 
 ## 3. Top 5 Weaknesses
-1. **Mock RAG Implementation:** The scoring-explanation RAG (`rag_engine.py`'s `RAG_KNOWLEDGE_BASE`) relies on a hardcoded dictionary rather than true semantic retrieval, drastically limiting its scalability and usefulness for complex financial documents.
+1. **Limited Knowledge Base Scope:** While true semantic retrieval (RAG) is now implemented using pgvector, the current knowledge base has a very limited scope and coverage. It contains only baseline guidelines rather than a comprehensive library of complex financial regulations, making it difficult to test the system's performance on deeply ambiguous edge cases.
 2. **Missing MLOps/Interpretability:** The ML model lacks SHAP or LIME integration. The LLM has to guess *why* a score is what it is, rather than being grounded in actual feature importance weights from the XGBoost model.
 3. **Monolithic Error Handling:** While file-logging was removed, centralized error observability across the ML and application stacks remains weak.
 4. **Lack of Advanced Guardrails:** While basic prompt injection is mitigated, complex jailbreaks utilizing advanced adversarial token manipulation might still trick the LLM, as there is no secondary response-validation layer.
@@ -30,4 +30,4 @@
 ## 5. Honest Overall Verdict
 **Verdict:** A highly capable, secure hackathon MVP that survives adversarial testing. 
 
-The recent surgical fixes transformed this project from a fragile, easily exploitable demo into a robust backend architecture. The application no longer locks up under concurrent load, prompt injections are neutralized, and role-based access control is properly enforced via JWTs. However, the "AI" aspects remain shallow: the RAG is just a dictionary lookup, and the LLM explanations lack mathematical grounding in the ML model. It will impress judges with its stability and security, but an expert AI/ML judge will easily spot the lack of true vector retrieval and model interpretability.
+The recent surgical fixes and database migrations have transformed this project from a fragile demo into a robust backend architecture. The application no longer locks up under concurrent load, prompt injections are neutralized, and role-based access control is strictly enforced via JWTs. Furthermore, the previous "mock RAG" has been successfully replaced with a true pgvector-powered semantic retrieval pipeline. While the LLM explanations still lack deep mathematical grounding in the ML model (via SHAP/LIME), it will deeply impress judges with its stability, security, and fully functional hybrid-search RAG architecture.

@@ -48,6 +48,8 @@ runs.json
 # Internal and Temporary Docs
 P0_SECRET_ROTATION_GUIDE.sh
 README_VISUAL_ENHANCEMENT_REPORT.md
+KNOWLEDGE_BASE_UPDATE_REPORT.md
+RAG_FAILURE_DIAGNOSTIC_REPORT.md
 backend/investigate_output.txt
 backend/out.txt
 backend/output.txt
