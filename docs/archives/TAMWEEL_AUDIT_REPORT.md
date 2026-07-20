@@ -1,5 +1,8 @@
 # TAMWEEL AI PLATFORM - TECHNICAL AUDIT REPORT
 
+> **STATUS: ARCHIVED & RESOLVED**
+> *This audit report reflects a past state of the repository. All major findings raised here—including hardcoded JWT secrets, lack of exact decimal precision for financial math, missing API rate limits, and missing database indexes (Vector & B-Tree)—have been successfully addressed and fixed in the current architecture.*
+
 ## 1. Executive Summary
 This report presents the findings of a comprehensive, read-only technical audit of the Tamweel AI credit scoring and financial advisory platform. The system demonstrates a robust architectural foundation with a thoughtful separation of concerns (Intent Classification -> Data Fetching -> Context Assembly). The implementation of Explainable AI (XAI) concepts in the UI is highly effective. However, several critical vulnerabilities and architectural gaps were identified, particularly concerning security (hardcoded secrets), database performance (missing indexes), and financial mathematics compliance (use of floating-point arithmetic instead of `Decimal`). Resolving these issues is essential prior to production launch to ensure compliance with financial regulations and data protection laws.
 

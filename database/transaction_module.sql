@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create B-Tree index to optimize transactional lookups per user
+CREATE INDEX IF NOT EXISTS idx_transactions_user_email ON transactions(user_email);
+
 -- Enable Row Level Security (RLS) for transactions table
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
