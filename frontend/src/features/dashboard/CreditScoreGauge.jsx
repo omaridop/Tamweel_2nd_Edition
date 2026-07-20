@@ -4,20 +4,22 @@ import { twMerge } from 'tailwind-merge';
 const CreditScoreGauge = ({ score }) => {
   const data = [
     { name: 'Score', value: score },
-    { name: 'Remaining', value: 850 - score },
+    { name: 'Remaining', value: 100 - score },
   ];
 
   const getColor = (s) => {
-    if (s < 580) return '#EF4444'; // Poor
-    if (s < 670) return '#F59E0B'; // Fair
-    if (s < 740) return '#3B82F6'; // Good
+    if (s < 20) return '#EF4444'; // Very Poor
+    if (s < 40) return '#F87171'; // Poor
+    if (s < 60) return '#F59E0B'; // Fair
+    if (s < 80) return '#3B82F6'; // Good
     return '#10B981'; // Excellent
   };
 
   const getLabel = (s) => {
-    if (s < 580) return 'Poor';
-    if (s < 670) return 'Fair';
-    if (s < 740) return 'Good';
+    if (s < 20) return 'Very Poor';
+    if (s < 40) return 'Poor';
+    if (s < 60) return 'Fair';
+    if (s < 80) return 'Good';
     return 'Excellent';
   };
 

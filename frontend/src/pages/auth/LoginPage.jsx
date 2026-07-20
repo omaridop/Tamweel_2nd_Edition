@@ -124,31 +124,7 @@ const LoginPage = () => {
                 <span className="text-accent underline decoration-accent/30 decoration-8 underline-offset-8">assessment</span> for the next billion.
               </h2>
               
-              <div className="grid grid-cols-2 gap-8 pt-8">
-                  <div>
-                      <p className="text-3xl font-bold">99.9%</p>
-                      <p className="text-slate-400 text-sm font-medium">Data Integrity</p>
-                  </div>
-                  <div>
-                      <p className="text-3xl font-bold">1.2M+</p>
-                      <p className="text-slate-400 text-sm font-medium">Assessments Run</p>
-                  </div>
-              </div>
 
-              <div className="pt-12">
-                  <div className="glass p-6 rounded-2xl max-w-sm">
-                      <p className="text-slate-200 text-sm italic mb-4">
-                        "Tamweel's AI insights helped us identify creditworthy borrowers we would have otherwise missed."
-                      </p>
-                      <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full bg-slate-700 mr-3"></div>
-                          <div>
-                              <p className="text-xs font-bold">Sarah Chen</p>
-                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">CTO @ FinBank</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
           </div>
       </div>
     </div>
