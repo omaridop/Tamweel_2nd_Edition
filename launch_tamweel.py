@@ -34,7 +34,7 @@ def launch():
     print("-> Frontend: http://localhost:5173 (or 5174)")
     print("\nCredentials:")
     print("-> User  : anas@tamweel.ai / password123")
-    print("-> Admin : [Check DB for Sponsor Email] / adminpassword")
+    print("-> Admin : [Check DB for Sponsor Email] / [See Secure Credentials]")
     print("\n" + "-"*50)
     print("Press Ctrl+C to stop both servers.")
     print("-"*50 + "\n")
