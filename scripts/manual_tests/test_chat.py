@@ -1,11 +1,12 @@
 import urllib.request
 import json
+import os
 import jwt
 
 # Generate JWT Token
 token = jwt.encode(
     {'sub': 'anas@tamweel.ai', 'email': 'anas@tamweel.ai', 'role': 'user'},
-    'tamweel_secret_key_123',
+    os.environ.get("JWT_SECRET_KEY", "test-secret-for-ci"),
     algorithm='HS256'
 )
 

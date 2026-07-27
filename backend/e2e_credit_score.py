@@ -1,10 +1,11 @@
-﻿import asyncio
+import asyncio
 import httpx
 import jwt
+import os
 from datetime import datetime, timedelta
 
 def create_mock_token(email: str):
-    secret = "tamweel_secret_key_123"
+    secret = os.environ.get("JWT_SECRET_KEY", "test-secret-for-ci")
     algorithm = "HS256"
     
     payload = {
