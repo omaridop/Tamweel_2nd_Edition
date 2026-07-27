@@ -1,61 +1,90 @@
+# ==============================================================================
+# TAMWEEL AI — .gitignore (Updated for Hackathon Submission)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# SECRETS & CREDENTIALS — Never commit these
+# ------------------------------------------------------------------------------
+.env
+*.env
+!.env.example
+!**/.env.example
+
+# ------------------------------------------------------------------------------
 # Python
+# ------------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
-.venv
+.venv/
 venv/
 ENV/
-.env
-
-# Node
-node_modules/
+*.egg-info/
+.eggs/
 dist/
-dist-ssr/
+build/
+*.so
+
+# ------------------------------------------------------------------------------
+# Node / Frontend
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
 *.local
 
-# OS
+# ------------------------------------------------------------------------------
+# OS / Editor artifacts
+# ------------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
-
-# Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Testing
+# ------------------------------------------------------------------------------
+# Testing & Coverage
+# ------------------------------------------------------------------------------
 .pytest_cache/
+**/.pytest_cache/
 .coverage
+htmlcov/
+*.cover
 
+# ------------------------------------------------------------------------------
 # Redis
+# ------------------------------------------------------------------------------
 dump.rdb
 *.rdb
 
-# Project Specific
-backend/consumer_empowerment_and_market_conduct_wg_action_plan-0.pdf
-data/*.csv
-ml_pipeline/data/*.csv
-
-# Logs & Temp
-logs/
-tmp/
-*.log
-
-# Local run data
+# ------------------------------------------------------------------------------
+# Local run state / ephemeral JSON
+# ------------------------------------------------------------------------------
 latest_run.json
 runs.json
 
-# Internal and Temporary Docs
-P0_SECRET_ROTATION_GUIDE.sh
-README_VISUAL_ENHANCEMENT_REPORT.md
+# ------------------------------------------------------------------------------
+# Chat exports & diff files (internal coordination artifacts)
+# ------------------------------------------------------------------------------
+chat_diff.txt
+chat_diff_utf8.txt
+hybrid_diff.txt
+chat_out.txt
+
+# ------------------------------------------------------------------------------
+# Internal working reports (dev process, not product docs)
+# Used during development; not meaningful to judges or contributors.
+# ------------------------------------------------------------------------------
+BUG_FIX_VALIDATION_REPORT.md
+FINAL_INTEGRATED_REPORT.md
+FINAL_POLISH_REPORT.md
 KNOWLEDGE_BASE_UPDATE_REPORT.md
 RAG_FAILURE_DIAGNOSTIC_REPORT.md
-backend/investigate_output.txt
-backend/out.txt
-backend/output.txt
-backend/parent_content.txt
-backend/structured_financial_plan.md
-chat_out.txt
+P0_SECRET_ROTATION_GUIDE.sh
+README_VISUAL_ENHANCEMENT_REPORT.md
+
+# docs/archives — internal triage & working notes
 docs/archives/chat_out.txt
 docs/archives/after_complexity.txt
 docs/archives/after_maintainability.txt
@@ -68,6 +97,35 @@ docs/archives/tree2.txt
 docs/archives/phases.txt
 docs/archives/user_phases.txt
 docs/archives/security_advice.md
-chat_diff.txt
-chat_diff_utf8.txt
-hybrid_diff.txt
+docs/archives/RAG_DIAGNOSTIC_REPORT.md
+docs/archives/TAMWEEL_AUDIT_REPORT.md
+docs/archives/PROJECT_CONTEXT_SUMMARY.md
+
+# ------------------------------------------------------------------------------
+# Backend-side scratch & debug outputs
+# ------------------------------------------------------------------------------
+backend/investigate_output.txt
+backend/out.txt
+backend/output.txt
+backend/parent_content.txt
+backend/structured_financial_plan.md
+
+# ------------------------------------------------------------------------------
+# Root-level scratch / one-off test scripts
+# (Quick-fire API / DB tests used during development)
+# ------------------------------------------------------------------------------
+test_live_api.py
+
+# ------------------------------------------------------------------------------
+# Project-specific large binary / data files
+# ------------------------------------------------------------------------------
+backend/consumer_empowerment_and_market_conduct_wg_action_plan-0.pdf
+data/*.csv
+ml_pipeline/data/*.csv
+
+# ------------------------------------------------------------------------------
+# Logs & temp
+# ------------------------------------------------------------------------------
+logs/
+tmp/
+*.log
